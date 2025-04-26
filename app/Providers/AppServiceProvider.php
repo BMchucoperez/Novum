@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Registrar componentes de Blade para iconos personalizados
+        $this->loadViewComponentsAs('icons', [
+            // Los componentes se cargarán automáticamente desde resources/views/components/icons
+        ]);
     }
 }

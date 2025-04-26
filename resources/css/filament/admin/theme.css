@@ -1,0 +1,53 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+:root {
+    --sidebar-width: 18rem;
+    --sidebar-background: #1e3a8a;
+    --sidebar-item-color: white;
+    --sidebar-item-active-color: white;
+    --sidebar-item-active-background: rgba(255, 255, 255, 0.1);
+    --sidebar-item-hover-background: rgba(255, 255, 255, 0.05);
+    --sidebar-item-icon-color: rgba(255, 255, 255, 0.7);
+    --sidebar-item-icon-active-color: white;
+    --sidebar-item-icon-hover-color: white;
+    --sidebar-item-label-color: rgba(255, 255, 255, 0.7);
+    --sidebar-item-label-active-color: white;
+    --sidebar-item-label-hover-color: white;
+    --sidebar-group-label-color: rgba(255, 255, 255, 0.5);
+    --sidebar-border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Estilo para el sidebar */
+.fi-sidebar {
+    @apply bg-blue-900 text-white shadow-xl;
+}
+
+/* Estilo para los elementos del sidebar */
+.fi-sidebar-item {
+    @apply text-white hover:bg-blue-800 transition-colors duration-200;
+}
+
+/* Estilo para los elementos activos del sidebar */
+.fi-sidebar-item.fi-active {
+    @apply bg-blue-800 text-white;
+}
+
+/* Estilo para los grupos de navegación */
+.fi-sidebar-group-label {
+    @apply text-blue-200 font-bold uppercase tracking-wider text-xs;
+}
+
+/* Estilo para el botón de colapsar sidebar */
+.fi-sidebar-collapse-button {
+    @apply text-white hover:bg-blue-800;
+}
+
+/* Estilo para el logo */
+.fi-sidebar-header {
+    @apply border-b border-blue-800;
+}
+
+/* Estilo para el footer del sidebar */
+.fi-sidebar-footer {
+    @apply border-t border-blue-800;
+}
