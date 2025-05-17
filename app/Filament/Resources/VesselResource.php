@@ -41,6 +41,18 @@ class VesselResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        // Si el usuario tiene el rol "Armador", solo mostrar sus embarcaciones asignadas
+        if (auth()->check() && auth()->user()->hasRole('Armador')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -165,6 +177,23 @@ class VesselResource extends Resource
                                             ])
                                             ->label('Propietario')
                                             ->helperText('Seleccione el propietario legal de la embarcación'),
+                                    ]),
+
+                                Section::make('Usuario Asignado')
+                                    ->description('Asignar un usuario responsable de la embarcación')
+                                    ->schema([
+                                        Forms\Components\Select::make('user_id')
+                                            ->relationship('user', 'name', function ($query) {
+                                                // Solo mostrar usuarios con el rol "Armador"
+                                                return $query->whereHas('roles', function ($query) {
+                                                    $query->where('name', 'Armador');
+                                                });
+                                            })
+                                            ->searchable()
+                                            ->preload()
+                                            ->label('Usuario Asignado')
+                                            ->helperText('Seleccione el usuario responsable de esta embarcación (solo usuarios con rol Armador)')
+                                            ->placeholder('Seleccione un usuario'),
                                     ]),
                             ]),
 
@@ -323,6 +352,13 @@ class VesselResource extends Resource
                     ->limit(30)
                     ->icon('heroicon-o-user'),
 
+                Tables\Columns\TextColumn::make('user.name')
+                    ->searchable()
+                    ->sortable()
+                    ->label('Usuario Asignado')
+                    ->limit(30)
+                    ->icon('heroicon-o-user-circle'),
+
                 Tables\Columns\TextColumn::make('construction_year')
                     ->sortable()
                     ->label('Año')
@@ -437,6 +473,17 @@ class VesselResource extends Resource
                 Tables\Filters\SelectFilter::make('shipyard_id')
                     ->relationship('shipyard', 'name')
                     ->label('Astillero')
+                    ->preload()
+                    ->searchable(),
+
+                Tables\Filters\SelectFilter::make('user_id')
+                    ->relationship('user', 'name', function ($query) {
+                        // Solo mostrar usuarios con el rol "Armador"
+                        return $query->whereHas('roles', function ($query) {
+                            $query->where('name', 'Armador');
+                        });
+                    })
+                    ->label('Usuario Asignado')
                     ->preload()
                     ->searchable(),
             ])
