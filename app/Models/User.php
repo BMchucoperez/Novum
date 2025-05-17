@@ -46,4 +46,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the vessels assigned to the user.
+     */
+    public function vessels()
+    {
+        return $this->hasMany(Vessel::class);
+    }
 }

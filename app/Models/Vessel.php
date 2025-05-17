@@ -29,6 +29,7 @@ class Vessel extends Model
         'gross_tonnage',
         'registration_number',
         'owner_id',
+        'user_id',
     ];
 
     /**
@@ -74,5 +75,13 @@ class Vessel extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(Owner::class);
+    }
+
+    /**
+     * Get the user assigned to the vessel.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }
