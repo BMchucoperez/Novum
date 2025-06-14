@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Vessel;
+use App\Models\CrewMember;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class VesselPolicy
+class CrewMemberPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class VesselPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_vessel');
+        return $user->can('view_any_crew::member');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Vessel $vessel): bool
+    public function view(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('view_vessel');
+        return $user->can('view_crew::member');
     }
 
     /**
@@ -31,23 +31,23 @@ class VesselPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_vessel');
+        return $user->can('create_crew::member');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Vessel $vessel): bool
+    public function update(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('update_vessel');
+        return $user->can('update_crew::member');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Vessel $vessel): bool
+    public function delete(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('delete_vessel');
+        return $user->can('delete_crew::member');
     }
 
     /**
@@ -55,15 +55,15 @@ class VesselPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_vessel');
+        return $user->can('delete_any_crew::member');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Vessel $vessel): bool
+    public function forceDelete(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('force_delete_vessel');
+        return $user->can('force_delete_crew::member');
     }
 
     /**
@@ -71,15 +71,15 @@ class VesselPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_vessel');
+        return $user->can('force_delete_any_crew::member');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Vessel $vessel): bool
+    public function restore(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('restore_vessel');
+        return $user->can('restore_crew::member');
     }
 
     /**
@@ -87,15 +87,15 @@ class VesselPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_vessel');
+        return $user->can('restore_any_crew::member');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Vessel $vessel): bool
+    public function replicate(User $user, CrewMember $crewMember): bool
     {
-        return $user->can('replicate_vessel');
+        return $user->can('replicate_crew::member');
     }
 
     /**
@@ -103,6 +103,6 @@ class VesselPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_vessel');
+        return $user->can('reorder_crew::member');
     }
 }

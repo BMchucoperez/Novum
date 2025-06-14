@@ -1,0 +1,62 @@
+/* Estilos personalizados para los certificados estatutarios */
+
+/* Badges de estado con colores específicos */
+.fi-badge[data-state="V"] {
+    background-color: #10b981 !important; /* Verde */
+    color: white !important;
+    font-weight: bold;
+}
+
+.fi-badge[data-state="A"] {
+    background-color: #f59e0b !important; /* Amarillo */
+    color: white !important;
+    font-weight: bold;
+}
+
+.fi-badge[data-state="N"] {
+    background-color: #f97316 !important; /* Naranja */
+    color: white !important;
+    font-weight: bold;
+}
+
+.fi-badge[data-state="R"] {
+    background-color: #ef4444 !important; /* Rojo */
+    color: white !important;
+    font-weight: bold;
+}
+
+/* Mejorar la visualización de los repeaters */
+.fi-fo-repeater-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 16px;
+    background-color: #fafafa;
+}
+
+.fi-fo-repeater-item:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+/* Estilos para los tabs */
+.fi-tabs-tab[aria-selected="true"] {
+    font-weight: 600;
+}
+
+/* Mejorar la visualización de las secciones */
+.fi-section {
+    margin-bottom: 24px;
+}
+
+.fi-section-header {
+    margin-bottom: 16px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .fi-fo-repeater-item {
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+}

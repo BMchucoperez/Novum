@@ -70,6 +70,9 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Gestión de Embarcaciones')
                     ->icon('heroicon-o-globe-alt'),
                 \Filament\Navigation\NavigationGroup::make()
+                    ->label('Inspecciones')
+                    ->icon('heroicon-o-clipboard-document-check'),
+                \Filament\Navigation\NavigationGroup::make()
                     ->label('Configuración')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->collapsed(),
