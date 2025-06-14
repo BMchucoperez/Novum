@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vessel extends Model
 {
@@ -83,5 +84,29 @@ class Vessel extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the statutory certificates for the vessel.
+     */
+    public function statutoryCertificates(): HasMany
+    {
+        return $this->hasMany(StatutoryCertificate::class);
+    }
+
+    /**
+     * Get the onboard management documents for the vessel.
+     */
+    public function onboardManagementDocuments(): HasMany
+    {
+        return $this->hasMany(OnboardManagementDocument::class);
+    }
+
+    /**
+     * Get the crew members for the vessel.
+     */
+    public function crewMembers(): HasMany
+    {
+        return $this->hasMany(CrewMember::class);
     }
 }
