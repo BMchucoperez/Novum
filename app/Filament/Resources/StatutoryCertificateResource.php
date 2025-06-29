@@ -154,6 +154,17 @@ class StatutoryCertificateResource extends Resource
                                         'md' => 2,
                                         'lg' => 2,
                                     ]),
+
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options(StatutoryCertificate::getOverallStatusOptions())
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //         'lg' => 1,
+                                //     ]),
                             ]),
                     ]),
 
@@ -208,15 +219,15 @@ class StatutoryCertificateResource extends Resource
                             'lg' => 2,
                         ])
                             ->schema([
-                                Forms\Components\Select::make('overall_status')
-                                    ->label('Estado General')
-                                    ->options(StatutoryCertificate::getOverallStatusOptions())
-                                    ->required()
-                                    ->default('A')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                    ]),
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options(StatutoryCertificate::getOverallStatusOptions())
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //     ]),
 
                                 Forms\Components\Textarea::make('general_observations')
                                     ->label('Observaciones Generales')
@@ -259,6 +270,36 @@ class StatutoryCertificateResource extends Resource
                             ->label('Estado')
                             ->options(StatutoryCertificate::getStatusOptions())
                             ->required()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('refrenda')
+                            ->label('Refrenda')
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\Toggle::make('vencimiento_activo')
+                            ->label('¿Tiene vencimiento?')
+                            ->default(false)
+                            ->inline(false)
+                            ->reactive()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('vencimiento')
+                            ->label('Vencimiento')
+                            ->reactive()
+                            ->disabled(fn (Forms\Get $get) => !$get('vencimiento_activo'))
+                            ->placeholder('Indeterminado')
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 1,

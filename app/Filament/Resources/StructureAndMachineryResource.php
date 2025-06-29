@@ -237,21 +237,21 @@ class StructureAndMachineryResource extends Resource
                                         'lg' => 2,
                                     ]),
 
-                                Forms\Components\Select::make('overall_status')
-                                    ->label('Estado General')
-                                    ->options([
-                                        'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
-                                        'A' => 'A - En trámite (operativo con observaciones menores)',
-                                        'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
-                                        'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
-                                    ])
-                                    ->required()
-                                    ->default('A')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                        'lg' => 1,
-                                    ]),
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options([
+                                //         'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
+                                //         'A' => 'A - En trámite (operativo con observaciones menores)',
+                                //         'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
+                                //         'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
+                                //     ])
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //         'lg' => 1,
+                                //     ]),
                             ]),
                     ]),
                 Tabs::make('Partes de Estructura y Maquinaria')
@@ -286,10 +286,10 @@ class StructureAndMachineryResource extends Resource
                     Forms\Components\Select::make('estado')
                         ->label('Estado')
                         ->options([
-                            'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
-                            'A' => 'A - En trámite (operativo con observaciones menores)',
-                            'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
-                            'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
+                            'V' => 'V - Conforme General',
+                            'A' => 'A - Conforme con Observaciones',
+                            'N' => 'N - No Conforme con Reparaciones',
+                            'R' => 'R - No Conforme Crítico',
                         ])
                         ->required(),
                     Textarea::make('comentarios')
@@ -352,11 +352,12 @@ class StructureAndMachineryResource extends Resource
 
                 Tables\Columns\BadgeColumn::make('overall_status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'V',
-                        'warning' => 'A',
-                        'danger' => ['N', 'R'],
-                    ])
+                    ->color(fn ($state) => match (trim(strtoupper($state))) {
+                        'V' => 'success',
+                        'A' => 'warning',
+                        'N', 'R' => 'danger',
+                        default => 'secondary',
+                    })
                     ->formatStateUsing(fn (string $state): string => static::getOverallStatusOptions()[$state] ?? $state),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -396,7 +397,7 @@ class StructureAndMachineryResource extends Resource
 
                 Tables\Filters\SelectFilter::make('overall_status')
                     ->label('Estado')
-                    ->options(StatutoryCertificate::getOverallStatusOptions()),
+                    ->options(static::getOverallStatusOptions()),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -442,10 +443,10 @@ class StructureAndMachineryResource extends Resource
     public static function getOverallStatusOptions(): array
     {
         return [
-            'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
-            'A' => 'A - En trámite (operativo con observaciones menores)',
-            'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
-            'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
+            'V' => 'V - Conforme General',
+            'A' => 'A - Conforme con Observaciones',
+            'N' => 'N - No Conforme con Reparaciones',
+            'R' => 'R - No Conforme Crítico',
         ];
     }
 }

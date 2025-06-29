@@ -152,6 +152,22 @@ class OnboardManagementDocumentResource extends Resource
                                         'md' => 2,
                                         'lg' => 2,
                                     ]),
+
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options([
+                                //         'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
+                                //         'A' => 'A - En trámite (operativo con observaciones menores)',
+                                //         'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
+                                //         'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
+                                //     ])
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //         'lg' => 1,
+                                //     ]),
                             ]),
                     ]),
 
@@ -188,15 +204,15 @@ class OnboardManagementDocumentResource extends Resource
                             'lg' => 2,
                         ])
                             ->schema([
-                                Forms\Components\Select::make('overall_status')
-                                    ->label('Estado General')
-                                    ->options(OnboardManagementDocument::getOverallStatusOptions())
-                                    ->required()
-                                    ->default('A')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                    ]),
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options(OnboardManagementDocument::getOverallStatusOptions())
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //     ]),
 
                                 Forms\Components\Textarea::make('general_observations')
                                     ->label('Observaciones Generales')
@@ -239,6 +255,36 @@ class OnboardManagementDocumentResource extends Resource
                             ->label('Estado')
                             ->options(OnboardManagementDocument::getStatusOptions())
                             ->required()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('refrenda')
+                            ->label('Refrenda')
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\Toggle::make('vencimiento_activo')
+                            ->label('¿Tiene vencimiento?')
+                            ->default(false)
+                            ->inline(false)
+                            ->reactive()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('vencimiento')
+                            ->label('Vencimiento')
+                            ->reactive()
+                            ->disabled(fn (Forms\Get $get) => !$get('vencimiento_activo'))
+                            ->placeholder('Indeterminado')
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 1,

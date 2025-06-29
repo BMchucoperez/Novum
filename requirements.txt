@@ -1,0 +1,3 @@
+<?php
+// Agrega esto a tu composer.json si no lo tienes:
+// "phpoffice/phpword": "^1.0"

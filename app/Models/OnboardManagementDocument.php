@@ -155,4 +155,40 @@ class OnboardManagementDocument extends Model
             'R' => 'R - No Conforme Crítico',
         ];
     }
+
+    /**
+     * Calcula el estado general automáticamente según los estados de todos los ítems de todas las partes.
+     */
+    public function calculateOverallStatus(): string
+    {
+        $allEstados = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $items = $this->getAttribute('parte_' . $i . '_items') ?? [];
+            foreach ($items as $item) {
+                if (!empty($item['estado'])) {
+                    $allEstados[] = $item['estado'];
+                }
+            }
+        }
+        if (empty($allEstados)) {
+            return 'A'; // Por defecto si no hay estados
+        }
+        if (in_array('R', $allEstados, true)) {
+            return 'R';
+        }
+        if (in_array('N', $allEstados, true)) {
+            return 'N';
+        }
+        if (in_array('A', $allEstados, true)) {
+            return 'A';
+        }
+        return 'V';
+    }
+
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            $model->overall_status = $model->calculateOverallStatus();
+        });
+    }
 }
