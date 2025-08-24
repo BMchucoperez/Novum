@@ -14,13 +14,16 @@ class ReporteWord extends Model
         'owner_id',
         'vessel_id',
         'inspector_name',
+        'inspector_license',
         'inspection_date',
         'filters',
         'file_path',
+        'associated_vessels',
     ];
 
     protected $casts = [
         'filters' => 'array',
+        'associated_vessels' => 'array',
         'inspection_date' => 'date',
     ];
 

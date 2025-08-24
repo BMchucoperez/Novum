@@ -109,4 +109,51 @@ class Vessel extends Model
     {
         return $this->hasMany(CrewMember::class);
     }
+
+    /**
+     * Get the vessels associated to this vessel (this vessel is the main one).
+     */
+    public function associatedVessels(): HasMany
+    {
+        return $this->hasMany(VesselAssociation::class, 'main_vessel_id');
+    }
+
+    /**
+     * Get the main vessels where this vessel is associated.
+     */
+    public function mainVessels(): HasMany
+    {
+        return $this->hasMany(VesselAssociation::class, 'associated_vessel_id');
+    }
+
+    /**
+     * Get the inspection schedules for the vessel.
+     */
+    public function inspectionSchedules(): HasMany
+    {
+        return $this->hasMany(InspectionSchedule::class);
+    }
+
+    /**
+     * Get all associated vessels for this vessel (both directions).
+     */
+    public function getAllAssociatedVessels()
+    {
+        $associated = $this->associatedVessels()->with('associatedVessel')->get()->pluck('associatedVessel');
+        $mains = $this->mainVessels()->with('mainVessel')->get()->pluck('mainVessel');
+        
+        return $associated->merge($mains)->unique('id');
+    }
+
+    /**
+     * Get all vessels that should be included in inspections when this vessel is selected.
+     * This includes the vessel itself plus all associated vessels.
+     */
+    public function getInspectionVessels()
+    {
+        $vessels = collect([$this]);
+        $associated = $this->getAllAssociatedVessels();
+        
+        return $vessels->merge($associated)->unique('id')->take(3); // Máximo 3 embarcaciones
+    }
 }

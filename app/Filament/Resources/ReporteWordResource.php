@@ -247,8 +247,19 @@ class ReporteWordResource extends Resource
             ->columns([
                 TextColumn::make('inspection_date')->label('Fecha')->date('d/m/Y'),
                 TextColumn::make('owner.name')->label('Propietario'),
-                TextColumn::make('vessel.name')->label('Embarcación'),
+                TextColumn::make('vessel.name')->label('Embarcación Principal'),
                 TextColumn::make('inspector_name')->label('Inspector'),
+                TextColumn::make('inspector_license')->label('Licencia'),
+                TextColumn::make('associated_vessels')
+                    ->label('Embarcaciones Asociadas')
+                    ->formatStateUsing(function ($state) {
+                        if (empty($state) || !is_array($state)) {
+                            return 'Ninguna';
+                        }
+                        $vessels = \App\Models\Vessel::whereIn('id', $state)->pluck('name')->toArray();
+                        return count($vessels) > 0 ? implode(', ', $vessels) : 'Ninguna';
+                    })
+                    ->wrap(),
             ])
             ->actions([
                 Action::make('download')
@@ -302,13 +313,65 @@ class ReporteWordResource extends Resource
                 Action::make('generateReport')
                     ->label('Generar Informe')
                     ->icon('heroicon-o-document-text')
+                    ->visible(fn () => !auth()->check() || !auth()->user()->hasRole('Armador'))
                     ->form([
-                        Select::make('owner_id')->label('Propietario')->relationship('owner', 'name')->required(),
-                        Select::make('vessel_id')->label('Embarcación 1')->relationship('vessel', 'name')->required(),
-                        Select::make('vessel2_id')->label('Embarcación 2')->relationship('vessel2', 'name'),
-                        Select::make('vessel3_id')->label('Embarcación 3')->relationship('vessel3', 'name'),
-                        DatePicker::make('inspection_date')->label('Fecha de Inspección')->required(),
-                        TextInput::make('inspector_name')->label('Nombre del Inspector')->required(),
+                        Select::make('owner_id')
+                            ->label('Propietario')
+                            ->relationship('owner', 'name')
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                // Limpiar embarcaciones cuando cambia el propietario
+                                $set('vessel_id', null);
+                                $set('associated_vessels', []);
+                            }),
+                        
+                        Select::make('vessel_id')
+                            ->label('Embarcación Principal')
+                            ->options(function (callable $get) {
+                                $ownerId = $get('owner_id');
+                                if (!$ownerId) {
+                                    return [];
+                                }
+                                return \App\Models\Vessel::where('owner_id', $ownerId)
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    // Obtener embarcaciones asociadas
+                                    $vessel = \App\Models\Vessel::find($state);
+                                    if ($vessel) {
+                                        $associatedVessels = $vessel->getAllAssociatedVessels();
+                                        $associatedIds = $associatedVessels->pluck('id')->toArray();
+                                        $set('associated_vessels', $associatedIds);
+                                    }
+                                } else {
+                                    $set('associated_vessels', []);
+                                }
+                            }),
+                        
+                        Select::make('associated_vessels')
+                            ->label('Embarcaciones Asociadas')
+                            ->multiple()
+                            ->options(function () {
+                                return \App\Models\Vessel::pluck('name', 'id')->toArray();
+                            })
+                            ->helperText('Embarcaciones asociadas que se incluirán en el informe. Se cargan automáticamente pero puedes modificarlas.'),
+                        
+                        DatePicker::make('inspection_date')
+                            ->label('Fecha de Inspección')
+                            ->required(),
+                        
+                        TextInput::make('inspector_name')
+                            ->label('Nombre del Inspector')
+                            ->required(),
+                        
+                        TextInput::make('inspector_license')
+                            ->label('Licencia del Inspector')
+                            ->required(),
                     ])
                     ->action(function (array $data) {
                         try {
@@ -352,11 +415,9 @@ class ReporteWordResource extends Resource
                             // Datos básicos
                             $inspectionDate = \Carbon\Carbon::parse($data['inspection_date'])->format('d/m/Y');
                             $inspectorName = $data['inspector_name'] ?? 'No especificado';
+                            $inspectorLicense = $data['inspector_license'] ?? 'No especificada';
                             
-                            $section->addText("Fecha de Inspeccion: $inspectionDate", $normalStyle);
-                            $section->addText("Inspector: $inspectorName", $normalStyle);
-                            
-                            // Obtener información de propietario y embarcación
+                            // Obtener información de propietario
                             try {
                                 $owner = \App\Models\Owner::find($data['owner_id']);
                                 $ownerName = $owner ? $owner->name : 'No disponible';
@@ -365,13 +426,30 @@ class ReporteWordResource extends Resource
                                 $section->addText('Propietario: No disponible', $normalStyle);
                             }
                             
+                            // Obtener información de embarcación principal
                             try {
                                 $vessel = \App\Models\Vessel::find($data['vessel_id']);
                                 $vesselName = $vessel ? $vessel->name : 'No disponible';
-                                $section->addText("Embarcacion: $vesselName", $normalStyle);
+                                $section->addText("Embarcacion Principal: $vesselName", $normalStyle);
                             } catch (\Exception $e) {
-                                $section->addText('Embarcacion: No disponible', $normalStyle);
+                                $section->addText('Embarcacion Principal: No disponible', $normalStyle);
                             }
+                            
+                            // Mostrar embarcaciones asociadas
+                            if (!empty($data['associated_vessels']) && is_array($data['associated_vessels'])) {
+                                try {
+                                    $associatedVessels = \App\Models\Vessel::whereIn('id', $data['associated_vessels'])->pluck('name')->toArray();
+                                    if (!empty($associatedVessels)) {
+                                        $section->addText("Embarcaciones Asociadas: " . implode(', ', $associatedVessels), $normalStyle);
+                                    }
+                                } catch (\Exception $e) {
+                                    $section->addText('Embarcaciones Asociadas: Error al cargar', $normalStyle);
+                                }
+                            }
+                            
+                            $section->addText("Fecha de Inspeccion: $inspectionDate", $normalStyle);
+                            $section->addText("Nombre del Inspector: $inspectorName", $normalStyle);
+                            $section->addText("Licencia del Inspector: $inspectorLicense", $normalStyle);
                             
                             $section->addTextBreak(2);
 
@@ -391,8 +469,14 @@ class ReporteWordResource extends Resource
 
                             foreach ($models as $titulo => $modelClass) {
                                 try {
+                                    // Crear array de vessel_ids incluyendo la principal y las asociadas
+                                    $vesselIds = [$data['vessel_id']];
+                                    if (!empty($data['associated_vessels']) && is_array($data['associated_vessels'])) {
+                                        $vesselIds = array_merge($vesselIds, $data['associated_vessels']);
+                                    }
+                                    
                                     $count = $modelClass::where('owner_id', $data['owner_id'])
-                                        ->where('vessel_id', $data['vessel_id'])
+                                        ->whereIn('vessel_id', $vesselIds)
                                         ->whereDate('inspection_date', $data['inspection_date'])
                                         ->count();
                                     
@@ -451,7 +535,9 @@ class ReporteWordResource extends Resource
                                 'owner_id' => $data['owner_id'],
                                 'vessel_id' => $data['vessel_id'],
                                 'inspector_name' => $data['inspector_name'],
+                                'inspector_license' => $data['inspector_license'] ?? null,
                                 'inspection_date' => $data['inspection_date'],
+                                'associated_vessels' => $data['associated_vessels'] ?? [],
                                 'filters' => $data,
                                 'file_path' => $filePath,
                             ]);
@@ -477,13 +563,65 @@ class ReporteWordResource extends Resource
                     ->label('Generar PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
+                    ->visible(fn () => !auth()->check() || !auth()->user()->hasRole('Armador'))
                     ->form([
-                        Select::make('owner_id')->label('Propietario')->relationship('owner', 'name')->required(),
-                        Select::make('vessel_id')->label('Embarcación 1')->relationship('vessel', 'name')->required(),
-                        Select::make('vessel2_id')->label('Embarcación 2')->relationship('vessel2', 'name'),
-                        Select::make('vessel3_id')->label('Embarcación 3')->relationship('vessel3', 'name'),
-                        DatePicker::make('inspection_date')->label('Fecha de Inspección')->required(),
-                        TextInput::make('inspector_name')->label('Nombre del Inspector')->required(),
+                        Select::make('owner_id')
+                            ->label('Propietario')
+                            ->relationship('owner', 'name')
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                // Limpiar embarcaciones cuando cambia el propietario
+                                $set('vessel_id', null);
+                                $set('associated_vessels', []);
+                            }),
+                        
+                        Select::make('vessel_id')
+                            ->label('Embarcación Principal')
+                            ->options(function (callable $get) {
+                                $ownerId = $get('owner_id');
+                                if (!$ownerId) {
+                                    return [];
+                                }
+                                return \App\Models\Vessel::where('owner_id', $ownerId)
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    // Obtener embarcaciones asociadas
+                                    $vessel = \App\Models\Vessel::find($state);
+                                    if ($vessel) {
+                                        $associatedVessels = $vessel->getAllAssociatedVessels();
+                                        $associatedIds = $associatedVessels->pluck('id')->toArray();
+                                        $set('associated_vessels', $associatedIds);
+                                    }
+                                } else {
+                                    $set('associated_vessels', []);
+                                }
+                            }),
+                        
+                        Select::make('associated_vessels')
+                            ->label('Embarcaciones Asociadas')
+                            ->multiple()
+                            ->options(function () {
+                                return \App\Models\Vessel::pluck('name', 'id')->toArray();
+                            })
+                            ->helperText('Embarcaciones asociadas que se incluirán en el informe. Se cargan automáticamente pero puedes modificarlas.'),
+                        
+                        DatePicker::make('inspection_date')
+                            ->label('Fecha de Inspección')
+                            ->required(),
+                        
+                        TextInput::make('inspector_name')
+                            ->label('Nombre del Inspector')
+                            ->required(),
+                        
+                        TextInput::make('inspector_license')
+                            ->label('Licencia del Inspector')
+                            ->required(),
                     ])
                     ->action(function (array $data) {
                         try {
@@ -518,7 +656,9 @@ class ReporteWordResource extends Resource
                                 'owner_id' => $data['owner_id'],
                                 'vessel_id' => $data['vessel_id'],
                                 'inspector_name' => $data['inspector_name'],
+                                'inspector_license' => $data['inspector_license'] ?? null,
                                 'inspection_date' => $data['inspection_date'],
+                                'associated_vessels' => $data['associated_vessels'] ?? [],
                                 'filters' => $data,
                                 'file_path' => $filePath,
                             ]);
@@ -550,8 +690,10 @@ class ReporteWordResource extends Resource
             $reportData = [
                 'fecha' => \Carbon\Carbon::parse($data['inspection_date'])->format('d/m/Y'),
                 'inspector' => self::cleanText($data['inspector_name'] ?? 'No especificado'),
+                'inspector_license' => self::cleanText($data['inspector_license'] ?? 'No especificada'),
                 'propietario' => 'No disponible',
                 'embarcacion' => 'No disponible',
+                'embarcaciones_asociadas' => [],
                 'structureData' => [],
                 'certificateData' => [],
                 'documentData' => [],
@@ -569,7 +711,7 @@ class ReporteWordResource extends Resource
                 \Log::error('Error obteniendo propietario: ' . $e->getMessage());
             }
 
-            // Obtener información de embarcación
+            // Obtener información de embarcación principal
             try {
                 $vessel = \App\Models\Vessel::find($data['vessel_id']);
                 if ($vessel && $vessel->name) {
@@ -577,6 +719,18 @@ class ReporteWordResource extends Resource
                 }
             } catch (\Exception $e) {
                 \Log::error('Error obteniendo embarcación: ' . $e->getMessage());
+            }
+
+            // Obtener embarcaciones asociadas
+            if (!empty($data['associated_vessels']) && is_array($data['associated_vessels'])) {
+                try {
+                    $associatedVessels = \App\Models\Vessel::whereIn('id', $data['associated_vessels'])->get();
+                    $reportData['embarcaciones_asociadas'] = $associatedVessels->map(function ($vessel) {
+                        return self::cleanText($vessel->name);
+                    })->toArray();
+                } catch (\Exception $e) {
+                    \Log::error('Error obteniendo embarcaciones asociadas: ' . $e->getMessage());
+                }
             }
 
             // Recopilar datos de los módulos
@@ -593,9 +747,15 @@ class ReporteWordResource extends Resource
                         continue;
                     }
 
+                    // Crear array de vessel_ids incluyendo la principal y las asociadas
+                    $vesselIds = [$data['vessel_id']];
+                    if (!empty($data['associated_vessels']) && is_array($data['associated_vessels'])) {
+                        $vesselIds = array_merge($vesselIds, $data['associated_vessels']);
+                    }
+                    
                     $query = $modelClass::query()
                         ->where('owner_id', $data['owner_id'])
-                        ->where('vessel_id', $data['vessel_id'])
+                        ->whereIn('vessel_id', $vesselIds)
                         ->whereDate('inspection_date', $data['inspection_date']);
 
                     $records = $query->get();

@@ -286,6 +286,37 @@ class VesselResource extends Resource
                                     ]),
                             ]),
 
+                        Tab::make('Embarcaciones Asociadas')
+                            ->icon('heroicon-o-link')
+                            ->schema([
+                                Section::make('Asociaciones')
+                                    ->description('Embarcaciones que se incluirán automáticamente en las inspecciones cuando selecciones esta embarcación principal')
+                                    ->schema([
+                                        Forms\Components\Select::make('associated_vessels')
+                                            ->label('Embarcaciones Asociadas')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->options(function ($record) {
+                                                // Excluir la embarcación actual de las opciones
+                                                $query = \App\Models\Vessel::query();
+                                                if ($record) {
+                                                    $query->where('id', '!=', $record->id);
+                                                }
+                                                return $query->pluck('name', 'id');
+                                            })
+                                            ->helperText('Selecciona las embarcaciones que se incluirán automáticamente en las inspecciones. Máximo 2 embarcaciones adicionales.')
+                                            ->maxItems(2)
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if ($record) {
+                                                    $associatedIds = $record->associatedVessels()->pluck('associated_vessel_id')->toArray();
+                                                    $component->state($associatedIds);
+                                                }
+                                            })
+                                            ->dehydrated(false),
+                                    ]),
+                            ]),
+
                         Tab::make('Documentos y Certificados')
                             ->icon('heroicon-o-document-text')
                             ->schema([
@@ -358,6 +389,19 @@ class VesselResource extends Resource
                     ->label('Usuario Asignado')
                     ->limit(30)
                     ->icon('heroicon-o-user-circle'),
+
+                Tables\Columns\TextColumn::make('associated_vessels_count')
+                    ->label('Embarcaciones Asociadas')
+                    ->state(function (Vessel $record): string {
+                        $count = $record->associatedVessels()->count();
+                        if ($count === 0) {
+                            return 'Ninguna';
+                        }
+                        return $count . ' asociada' . ($count > 1 ? 's' : '');
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'Ninguna' ? 'gray' : 'success')
+                    ->icon('heroicon-o-link'),
 
                 Tables\Columns\TextColumn::make('construction_year')
                     ->sortable()

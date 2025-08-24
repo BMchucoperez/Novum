@@ -56,19 +56,8 @@ class CrewMemberResource extends Resource
                                     ->live()
                                     ->afterStateUpdated(function (Forms\Set $set) {
                                         $set('vessel_id', null);
-                                        $set('vessel_2_id', null);
-                                        $set('vessel_3_id', null);
+                                        $set('associated_vessels', []);
                                     })
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 2,
-                                        'lg' => 2,
-                                    ]),
-
-                                Forms\Components\DatePicker::make('inspection_date')
-                                    ->label('Fecha')
-                                    ->required()
-                                    ->default(now())
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 2,
@@ -76,7 +65,7 @@ class CrewMemberResource extends Resource
                                     ]),
 
                                 Forms\Components\Select::make('vessel_id')
-                                    ->label('Embarcación 1')
+                                    ->label('Embarcación Principal')
                                     ->options(function (Forms\Get $get) {
                                         $ownerId = $get('owner_id');
                                         if (!$ownerId) {
@@ -87,130 +76,43 @@ class CrewMemberResource extends Resource
                                     ->required()
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Primero selecciona un propietario')
+                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                        if ($state) {
+                                            $vessel = \App\Models\Vessel::find($state);
+                                            if ($vessel) {
+                                                $associatedVessels = $vessel->getAllAssociatedVessels();
+                                                $associatedIds = $associatedVessels->pluck('id')->toArray();
+                                                $set('associated_vessels', $associatedIds);
+                                            }
+                                        } else {
+                                            $set('associated_vessels', []);
+                                        }
+                                    })
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                        'lg' => 1,
+                                    ]),
+
+                                Forms\Components\Select::make('associated_vessels')
+                                    ->label('Embarcaciones Asociadas')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Vessel::pluck('name', 'id')->toArray();
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Embarcaciones asociadas que se incluirán en el registro. Se cargan automáticamente pero puedes modificarlas.')
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 2,
-                                        'lg' => 2,
-                                    ]),
-
-                                Forms\Components\Select::make('vessel_2_id')
-                                    ->label('Embarcación 2 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
-                                        }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
-                                    })
-                                    ->searchable()
-                                    ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                        'lg' => 1,
-                                    ]),
-
-                                Forms\Components\Select::make('vessel_3_id')
-                                    ->label('Embarcación 3 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
-                                        }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
-                                    })
-                                    ->searchable()
-                                    ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
                                         'lg' => 1,
                                     ]),
                             ]),
-                    ]),
 
-                Section::make('Tripulantes')
-                    ->description('Lista de tripulantes a bordo')
-                    ->columnSpanFull()
-                    ->schema([
-                        Repeater::make('tripulantes')
-                            ->label('')
-                            ->schema([
-                                Grid::make([
-                                    'default' => 1,
-                                    'sm' => 1,
-                                    'md' => 3,
-                                    'lg' => 3,
-                                    'xl' => 3,
-                                ])
-                                    ->schema([
-                                        Forms\Components\Select::make('cargo')
-                                            ->label('Cargo')
-                                            ->options(CrewMember::getCargoOptions())
-                                            ->required()
-                                            ->searchable()
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'md' => 1,
-                                                'lg' => 1,
-                                            ]),
-
-                                        Forms\Components\TextInput::make('nombre')
-                                            ->label('Nombre')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'md' => 1,
-                                                'lg' => 1,
-                                            ]),
-
-                                        Forms\Components\TextInput::make('matricula')
-                                            ->label('N° de Matrícula')
-                                            ->maxLength(255)
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'md' => 1,
-                                                'lg' => 1,
-                                            ]),
-
-                                        Forms\Components\Textarea::make('comentarios')
-                                            ->label('Comentarios')
-                                            ->placeholder('Observaciones específicas del tripulante...')
-                                            ->rows(2)
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'md' => 3,
-                                                'lg' => 3,
-                                            ]),
-                                    ]),
-                            ])
-                            ->defaultItems(1)
-                            ->default(CrewMember::getDefaultStructure())
-                            ->addActionLabel("Añadir tripulante")
-                            ->reorderable(true)
-                            ->collapsible()
-                            ->itemLabel(function (array $state): ?string {
-                                $cargo = $state['cargo'] ?? '';
-                                $nombre = $state['nombre'] ?? '';
-                                
-                                if ($cargo && $nombre) {
-                                    return "{$cargo} - {$nombre}";
-                                } elseif ($cargo) {
-                                    return $cargo;
-                                } elseif ($nombre) {
-                                    return $nombre;
-                                } else {
-                                    return 'Nuevo tripulante';
-                                }
-                            })
-                            ->columnSpanFull(),
+                        // Grid para tripulantes (si aplica, aquí puedes agregar el repeater o grid de tripulantes)
                     ]),
 
                 Section::make('Observaciones Generales')

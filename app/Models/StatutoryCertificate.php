@@ -19,6 +19,7 @@ class StatutoryCertificate extends Model
         'vessel_id',
         'vessel_2_id',
         'vessel_3_id',
+        'associated_vessels',
         'owner_id',
         'inspection_type',
         'inspection_date',
@@ -41,6 +42,7 @@ class StatutoryCertificate extends Model
      */
     protected $casts = [
         'inspection_date' => 'date',
+        'associated_vessels' => 'array',
         'parte_1_items' => 'array',
         'parte_2_items' => 'array',
         'parte_3_items' => 'array',
