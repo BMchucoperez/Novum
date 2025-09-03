@@ -16,7 +16,7 @@ class InspectionCalendar extends Page
 
     protected static ?string $navigationLabel = 'Calendario de Inspecciones';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 7;
 
     public $year;
     public $month;
@@ -56,34 +56,45 @@ class InspectionCalendar extends Page
         $startDate = Carbon::create($this->year, $this->month, 1)->startOfMonth();
         $endDate = Carbon::create($this->year, $this->month, 1)->endOfMonth();
 
+        // Añadir log para depuración
+        \Log::info("Buscando inspecciones entre {$startDate} y {$endDate}");
+
         // Obtener inspecciones para el mes
         $inspections = InspectionSchedule::whereBetween('start_datetime', [$startDate, $endDate])
             ->with('vessel')
-            ->get()
-            ->map(function ($inspection) {
-                return [
-                    'id' => $inspection->id,
-                    'title' => $inspection->title,
-                    'start' => $inspection->start_datetime->toIso8601String(),
-                    'end' => $inspection->end_datetime->toIso8601String(),
-                    'vessel_name' => $inspection->vessel->name ?? 'N/A',
-                    'status' => $inspection->status,
-                    'status_label' => InspectionSchedule::getStatusOptions()[$inspection->status] ?? $inspection->status,
-                    'status_color' => match ($inspection->status) {
-                        'scheduled' => 'bg-blue-500',
-                        'completed' => 'bg-green-500',
-                        'cancelled' => 'bg-red-500',
-                        default => 'bg-gray-500',
-                    }
-                ];
-            });
+            ->get();
+
+        // Log del número de inspecciones encontradas
+        \Log::info("Inspecciones encontradas: " . $inspections->count());
+
+        // Log de los estados de las inspecciones
+        $statuses = $inspections->pluck('status')->unique()->toArray();
+        \Log::info("Estados encontrados: " . implode(", ", $statuses));
+
+        $mappedInspections = $inspections->map(function ($inspection) {
+            return [
+                'id' => $inspection->id,
+                'title' => $inspection->title,
+                'start' => $inspection->start_datetime->toIso8601String(),
+                'end' => $inspection->end_datetime->toIso8601String(),
+                'vessel_name' => $inspection->vessel->name ?? 'N/A',
+                'status' => $inspection->status,
+                'status_label' => InspectionSchedule::getStatusLabel($inspection->status),
+                'status_color' => match (strtolower($inspection->status)) {
+                    'scheduled', 'programada' => 'style="background-color: #3b82f6; color: white;"',
+                    'completed', 'completada' => 'style="background-color: #22c55e; color: white;"',
+                    'cancelled', 'cancelada' => 'style="background-color: #ef4444; color: white;"',
+                    default => 'style="background-color: #6b7280; color: white;"',
+                }
+            ];
+        });
 
         // Datos para el calendario
         $firstDayOfMonth = Carbon::create($this->year, $this->month, 1)->dayOfWeek;
         $daysInMonth = Carbon::create($this->year, $this->month, 1)->daysInMonth;
 
         return [
-            'inspections' => $inspections,
+            'inspections' => $mappedInspections,
             'year' => $this->year,
             'month' => $this->month,
             'firstDayOfMonth' => $firstDayOfMonth,

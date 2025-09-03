@@ -22,13 +22,13 @@ class InspectionScheduleResource extends Resource
 
     protected static ?string $navigationGroup = 'Inspecciones';
 
-    protected static ?string $navigationLabel = 'Calendario de Inspecciones';
+    protected static ?string $navigationLabel = 'Programación de Inspecciones';
 
     protected static ?string $modelLabel = 'Inspección Programada';
 
     protected static ?string $pluralModelLabel = 'Inspecciones Programadas';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
     {
@@ -129,7 +129,7 @@ class InspectionScheduleResource extends Resource
                         'cancelled' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => InspectionSchedule::getStatusOptions()[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => InspectionSchedule::getStatusLabel($state))
                     ->label('Estado'),
             ])
             ->filters([

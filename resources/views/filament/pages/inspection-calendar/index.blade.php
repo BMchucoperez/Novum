@@ -19,7 +19,7 @@
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-                @foreach(['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as $day)
+                @foreach(['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'] as $day)
                     <div class="p-3 text-center font-semibold text-gray-700 text-sm">
                         {{ substr($day, 0, 3) }}
                     </div>
@@ -44,7 +44,7 @@
                         </div>
                         <div class="mt-1 space-y-1 overflow-y-auto flex-grow">
                             @forelse($dayInspections as $inspection)
-                                <div class="text-xs p-1 rounded truncate {{ $inspection['status_color'] }} text-white cursor-pointer hover:opacity-90 transition-opacity" 
+                                <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-90 transition-opacity shadow-sm border border-white" {!! $inspection['status_color'] !!}
                                      title="{{ $inspection['title'] }} - {{ $inspection['vessel_name'] }} ({{ $inspection['status_label'] }})">
                                     <div class="font-medium truncate">{{ $inspection['title'] }}</div>
                                     <div class="truncate opacity-90">{{ $inspection['vessel_name'] }}</div>
@@ -63,19 +63,19 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <h3 class="text-lg font-semibold mb-3 text-gray-900">Leyenda de Estados</h3>
+            <h3 class="text-lg font-semibold mb-4 text-gray-900">Leyenda de Estados</h3>
             <div class="flex flex-wrap gap-4">
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
-                    <span class="text-gray-700">Programada</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded mr-2 border shadow-sm" style="background-color: #3b82f6; border-color: #2563eb;"></div>
+                    <span class="text-gray-700 font-medium">Programada</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
-                    <span class="text-gray-700">Completada</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded mr-2 border shadow-sm" style="background-color: #22c55e; border-color: #16a34a;"></div>
+                    <span class="text-gray-700 font-medium">Completada</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
-                    <span class="text-gray-700">Cancelada</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded mr-2 border shadow-sm" style="background-color: #ef4444; border-color: #dc2626;"></div>
+                    <span class="text-gray-700 font-medium">Cancelada</span>
                 </div>
             </div>
         </div>

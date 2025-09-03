@@ -64,4 +64,19 @@ class InspectionSchedule extends Model
             'cancelled' => 'Cancelada',
         ];
     }
+
+    /**
+     * Get status label by key (supports both English and Spanish keys)
+     */
+    public static function getStatusLabel(string $status): string
+    {
+        $normalizedStatus = strtolower($status);
+        
+        return match($normalizedStatus) {
+            'scheduled', 'programada' => 'Programada',
+            'completed', 'completada' => 'Completada',
+            'cancelled', 'cancelada' => 'Cancelada',
+            default => $status,
+        };
+    }
 }

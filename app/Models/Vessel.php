@@ -135,6 +135,14 @@ class Vessel extends Model
     }
 
     /**
+     * Get the documents for the vessel.
+     */
+    public function vesselDocuments(): HasMany
+    {
+        return $this->hasMany(VesselDocument::class);
+    }
+
+    /**
      * Get all associated vessels for this vessel (both directions).
      */
     public function getAllAssociatedVessels()
@@ -155,5 +163,53 @@ class Vessel extends Model
         $associated = $this->getAllAssociatedVessels();
         
         return $vessels->merge($associated)->unique('id')->take(3); // Máximo 3 embarcaciones
+    }
+
+    /**
+     * Get document by type
+     */
+    public function getDocumentByType(string $documentType): ?VesselDocument
+    {
+        return $this->vesselDocuments()->where('document_type', $documentType)->first();
+    }
+
+    /**
+     * Get document completeness percentage
+     */
+    public function getDocumentCompleteness(): int
+    {
+        $totalRequired = count(VesselDocumentType::getAllDocuments());
+        $uploaded = $this->vesselDocuments()->valid()->count();
+        
+        return $totalRequired > 0 ? round(($uploaded / $totalRequired) * 100) : 0;
+    }
+
+    /**
+     * Get missing documents
+     */
+    public function getMissingDocuments(): array
+    {
+        $allDocuments = VesselDocumentType::getAllDocuments();
+        $uploadedTypes = $this->vesselDocuments()->valid()->pluck('document_type')->toArray();
+        
+        $missingTypes = array_diff(array_keys($allDocuments), $uploadedTypes);
+        
+        return array_intersect_key($allDocuments, array_flip($missingTypes));
+    }
+
+    /**
+     * Check if vessel has all required documents
+     */
+    public function hasRequiredDocuments(): bool
+    {
+        return empty($this->getMissingDocuments());
+    }
+
+    /**
+     * Get documents by category
+     */
+    public function getDocumentsByCategory(string $category)
+    {
+        return $this->vesselDocuments()->byCategory($category)->get();
     }
 }

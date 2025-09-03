@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('reporte_words', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('checklist_inspection_id')->constrained('checklist_inspections')->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('owner_id')->constrained()->onDelete('cascade');
             $table->foreignId('vessel_id')->constrained()->onDelete('cascade');

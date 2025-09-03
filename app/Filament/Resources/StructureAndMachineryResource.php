@@ -30,7 +30,7 @@ class StructureAndMachineryResource extends Resource
     protected static ?string $navigationLabel = 'Estructura y Maquinaria';
     protected static ?string $modelLabel = 'Estructura y Maquinaria';
     protected static ?string $pluralModelLabel = 'Estructuras y Maquinarias';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {

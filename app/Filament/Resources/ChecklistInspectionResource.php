@@ -6,6 +6,9 @@ use App\Filament\Resources\ChecklistInspectionResource\Pages;
 use App\Models\ChecklistInspection;
 use App\Models\Vessel;
 use App\Models\Owner;
+use App\Models\VesselDocument;
+use App\Models\VesselDocumentType;
+use Illuminate\Support\Facades\Storage;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -32,7 +35,58 @@ class ChecklistInspectionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Inspecciones Checklist';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 5;
+
+    /**
+     * Mapeo entre los tipos de documentos de vessel_documents y los ítems del checklist
+     */
+    protected static function getDocumentItemMapping(): array
+    {
+        return [
+            // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO
+            VesselDocumentType::CERTIFICADO_ARQUEACAO => 'Certificado nacional de arqueação',
+            VesselDocumentType::CERTIFICADO_BORDA_LIVRE => 'Certificado nacional de borda livre para a navegação interior',
+            VesselDocumentType::PROVISAO_REGISTRO => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)',
+            VesselDocumentType::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
+            VesselDocumentType::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação',
+            VesselDocumentType::LICENCA_IPAAM => 'Licença de operação - IPAAM',
+            VesselDocumentType::AUTORIZACAO_ANP => 'Autorização de ANP',
+            VesselDocumentType::AUTORIZACAO_ANTAQ => 'Autorização de ANTAQ',
+            VesselDocumentType::AUTORIZACAO_IBAMA => 'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA',
+            VesselDocumentType::CERTIFICADO_REGULARIDADE => 'Certificado de regularidade - IBAMA',
+            VesselDocumentType::CERTIFICADO_ARMADOR => 'Certificado de registro de armador (CRA)',
+            VesselDocumentType::APOLICE_SEGURO => 'Apolice de seguro P&I',
+            
+            // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
+            VesselDocumentType::LIVRO_OLEO => 'Livro de oleo',
+            VesselDocumentType::PLANO_SEGURANCA => 'Plano de segurança',
+            VesselDocumentType::PLANO_ARRANJO => 'Plano de arranjo geral',
+            VesselDocumentType::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
+            VesselDocumentType::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
+            VesselDocumentType::TESTE_OPACIDADE => 'Teste de Opacidade',
+            VesselDocumentType::CERTIFICADO_PNEUMATICO => 'Certificado de teste pneumático dos tanques de armazenamento de óleo',
+            VesselDocumentType::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
+            VesselDocumentType::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo ',
+            VesselDocumentType::PLANO_SOPEP => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP',
+            VesselDocumentType::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio',
+        ];
+    }
+
+    /**
+     * Obtener documentos existentes para una embarcación específica
+     */
+    protected static function getVesselDocuments(?int $vesselId): array
+    {
+        if (!$vesselId) {
+            return [];
+        }
+
+        return VesselDocument::where('vessel_id', $vesselId)
+            ->where('is_valid', true)
+            ->get()
+            ->keyBy('document_type')
+            ->toArray();
+    }
 
     public static function form(Form $form): Form
     {
@@ -176,7 +230,7 @@ class ChecklistInspectionResource extends Resource
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(25)
                             ->schema([
-                                static::createChecklistSection('parte_3_items', '🛡️ Items de Evaluación - Parte 3', 3),
+                                static::createChecklistSection('parte_3_items', '🛡️ Items de Evaluación - Parte 3', 3, true), // true for image-only attachments
                             ]),
 
                         Tabs\Tab::make('📊 Parte 4')
@@ -184,7 +238,7 @@ class ChecklistInspectionResource extends Resource
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(22)
                             ->schema([
-                                static::createChecklistSection('parte_4_items', '📊 Items de Evaluación - Parte 4', 4),
+                                static::createChecklistSection('parte_4_items', '📊 Items de Evaluación - Parte 4', 4, true), // true for image-only attachments
                             ]),
 
                         Tabs\Tab::make('🔧 Parte 5')
@@ -192,7 +246,7 @@ class ChecklistInspectionResource extends Resource
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(18)
                             ->schema([
-                                static::createChecklistSection('parte_5_items', '🔧 Items de Evaluación - Parte 5', 5),
+                                static::createChecklistSection('parte_5_items', '🔧 Items de Evaluación - Parte 5', 5, true), // true for image-only attachments
                             ]),
 
                         Tabs\Tab::make('✅ Parte 6')
@@ -200,7 +254,7 @@ class ChecklistInspectionResource extends Resource
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(8)
                             ->schema([
-                                static::createChecklistSection('parte_6_items', '✅ Items de Evaluación - Parte 6', 6),
+                                static::createChecklistSection('parte_6_items', '✅ Items de Evaluación - Parte 6', 6, true), // true for image-only attachments
                             ]),
                     ]),
 
@@ -231,7 +285,7 @@ class ChecklistInspectionResource extends Resource
             ]);
     }
 
-    protected static function createChecklistSection(string $fieldName, string $title, int $parteNumber): Repeater
+    protected static function createChecklistSection(string $fieldName, string $title, int $parteNumber, bool $imageOnly = false): Repeater
     {
         $defaultItems = ChecklistInspection::getDefaultStructure()["parte_{$parteNumber}"];
 
@@ -351,21 +405,198 @@ class ChecklistInspectionResource extends Resource
                                         'lg' => 4,
                                     ]),
 
-                                // Archivos adjuntos (solo para prioridades 1 y 2)
+                                // Archivos adjuntos o vista de documento existente
                                 Forms\Components\FileUpload::make('archivos_adjuntos')
-                                    ->label('📁 Archivos Adjuntos')
+                                    ->label(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return '📁 Archivos Adjuntos';
+                                        }
+                                        
+                                        // Verificar si existe documento
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            $document = VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->first();
+                                            
+                                            if ($document) {
+                                                return '📄 Documento: ' . $document->getDisplayName();
+                                            }
+                                        }
+                                        
+                                        return '📁 Archivos Adjuntos';
+                                    })
+                                    ->helperText(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return 'Suba archivos si es necesario';
+                                        }
+                                        
+                                        // Verificar si existe documento
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            $document = VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->first();
+                                            
+                                            if ($document) {
+                                                $statusText = $document->getStatusText();
+                                                return "✅ Estado: {$statusText}";
+                                            }
+                                        }
+                                        
+                                        return $imageOnly ? 'Suba imágenes si es necesario' : 'Suba archivos PDF o imágenes si es necesario';
+                                    })
                                     ->multiple()
-                                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
+                                    ->acceptedFileTypes($imageOnly ? ['image/jpeg', 'image/png', 'image/jpg'] : ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
                                     ->maxFiles(5)
                                     ->maxSize(10240) // 10MB
                                     ->directory('checklist-attachments')
                                     ->visibility('private')
                                     ->downloadable()
                                     ->previewable()
-                                    //->helperText('📋 Solo archivos PDF e imágenes. Máximo 5 archivos de 10MB cada uno.')
+                                    ->disabled(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return false;
+                                        }
+                                        
+                                        // Deshabilitar si existe documento
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            return VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->exists();
+                                        }
+                                        
+                                        return false;
+                                    })
                                     ->visible(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return true;
+                                        }
+                                        
+                                        // Verificar si existe documento
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            // Hide if document exists
+                                            return !VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->exists();
+                                        }
+                                        
                                         $prioridad = $get('prioridad') ?? 3;
                                         return ChecklistInspection::priorityAllowsAttachments($prioridad);
+                                    })
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 3,
+                                        'lg' => 3,
+                                    ]),
+                                    
+                                // Información sobre documento existente
+                                Forms\Components\TextInput::make('document_info')
+                                    ->label('Documento Existente')
+                                    ->placeholder('Descargar  ->')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->helperText(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return '';
+                                        }
+                                        
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            $document = VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->first();
+                                            
+                                            if ($document) {
+                                                $statusText = $document->getStatusText();
+                                                return "✅ Estado: {$statusText}";
+                                            }
+                                        }
+                                        
+                                        return '';
+                                    })
+                                    ->suffixAction(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return null;
+                                        }
+                                        
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            $document = VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->first();
+                                            
+                                            if ($document && $document->file_path) {
+                                                $url = route('documents.download', ['id' => $document->id]);
+                                                
+                                                return Forms\Components\Actions\Action::make('download')
+                                                    ->label('Descargar')
+                                                    ->icon('heroicon-o-arrow-down-tray')
+                                                    ->color('primary')
+                                                    ->url($url)
+                                                    ->openUrlInNewTab();
+                                            }
+                                        }
+                                        
+                                        return null;
+                                    })
+                                    ->visible(function (Forms\Get $get) {
+                                        $vesselId = $get('../../vessel_id');
+                                        $itemName = $get('item');
+                                        
+                                        if (!$vesselId || !$itemName) {
+                                            return false;
+                                        }
+                                        
+                                        $documentMapping = static::getDocumentItemMapping();
+                                        $documentType = array_search($itemName, $documentMapping);
+                                        
+                                        if ($documentType) {
+                                            return VesselDocument::where('vessel_id', $vesselId)
+                                                ->where('document_type', $documentType)
+                                                ->where('is_valid', true)
+                                                ->exists();
+                                        }
+                                        
+                                        return false;
                                     })
                                     ->columnSpan([
                                         'default' => 1,
@@ -524,6 +755,30 @@ class ChecklistInspectionResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        // Check if the current user has the "Armador" role
+        $user = auth()->user();
+        
+        if ($user && $user->hasRole('Armador')) {
+            return false; // Hide create button for Armador role
+        }
+        
+        return true; // Allow create for all other roles
+    }
+
+    public static function canDelete($record): bool
+    {
+        // Check if the current user has the "Armador" role
+        $user = auth()->user();
+        
+        if ($user && $user->hasRole('Armador')) {
+            return false; // Hide delete button for Armador role
+        }
+        
+        return true; // Allow delete for all other roles
     }
 
     public static function getNavigationBadge(): ?string
