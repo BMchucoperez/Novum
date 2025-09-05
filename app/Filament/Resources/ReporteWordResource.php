@@ -236,7 +236,7 @@ class ReporteWordResource extends Resource
                     ->label('Descargar')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
-                    ->url(fn (ReporteWord $record): string => route('reporte-word.download', $record->id))
+                    ->url(fn (ReporteWord $record): string => url('/reporte-word/download/' . $record->id))
                     ->openUrlInNewTab()
                     ->visible(function (ReporteWord $record): bool {
                         // Only show download button if file exists
