@@ -25,17 +25,32 @@ class DocumentController extends Controller
     {
         try {
             // Encontrar el reporte
-            $reporte = ReporteWord::with('checklistInspection.vessel')->findOrFail($id);
+            $reporte = ReporteWord::with(['checklistInspection.vessel', 'checklistInspection.owner'])->findOrFail($id);
             
             // Verificar que el archivo existe
             $filePath = $reporte->report_path;
+            
+            if (empty($filePath)) {
+                \Log::error('Ruta de archivo vacía para reporte ID: ' . $id);
+                abort(404, 'La ruta del archivo no está definida.');
+            }
+            
             $fullPath = storage_path('app/private/' . $filePath);
             
-            // Depuración de rutas para identificar el problema
+            // Depuración detallada
+            \Log::info('Intentando descargar reporte:', [
+                'reporte_id' => $id,
+                'file_path' => $filePath,
+                'full_path' => $fullPath,
+                'file_exists' => file_exists($fullPath)
+            ]);
+            
             if (!file_exists($fullPath)) {
-                \Log::error('Archivo no encontrado: ' . $fullPath);
-                \Log::info('ID del reporte: ' . $id);
-                \Log::info('Ruta del archivo: ' . $filePath);
+                \Log::error('Archivo no encontrado:', [
+                    'reporte_id' => $id,
+                    'expected_path' => $fullPath,
+                    'file_path_in_db' => $filePath
+                ]);
                 
                 // Verificar si el directorio existe
                 $directory = dirname($fullPath);
@@ -43,26 +58,78 @@ class DocumentController extends Controller
                     \Log::error('El directorio no existe: ' . $directory);
                 }
                 
-                abort(404, 'El archivo no existe en la ruta: ' . $filePath);
+                // Intentar encontrar archivos similares en el directorio
+                $reportsDir = storage_path('app/private/reports');
+                if (file_exists($reportsDir)) {
+                    $availableFiles = scandir($reportsDir);
+                    \Log::info('Archivos disponibles en reports:', $availableFiles);
+                }
+                
+                abort(404, 'El archivo del reporte no existe. Es posible que haya sido eliminado o que la ruta esté corrupta.');
+            }
+            
+            // Verificar que el archivo no esté vacío o corrupto
+            $fileSize = filesize($fullPath);
+            if ($fileSize === false || $fileSize < 1000) {
+                \Log::error('Archivo corrupto o muy pequeño:', [
+                    'file_path' => $fullPath,
+                    'file_size' => $fileSize
+                ]);
+                abort(404, 'El archivo del reporte está corrupto o es demasiado pequeño.');
             }
             
             // Obtener extensión del archivo
             $extension = pathinfo($filePath, PATHINFO_EXTENSION);
             
-            // Prepara el nombre del archivo para descarga
-            $vesselName = $reporte->checklistInspection && $reporte->checklistInspection->vessel ? 
-                          $reporte->checklistInspection->vessel->name : 'Checklist';
-            $downloadName = 'Reporte_' . str_replace(' ', '_', $vesselName) . '_' . date('Y-m-d') . '.' . $extension;
+            // Preparar el nombre del archivo para descarga
+            $vesselName = 'Sin_Embarcacion';
+            if ($reporte->checklistInspection && $reporte->checklistInspection->vessel) {
+                $vesselName = $reporte->checklistInspection->vessel->name;
+            }
             
-            // Devolver el archivo directamente, evitando usar Storage
-            return response()->download($fullPath, $downloadName, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
-                'Cache-Control' => 'max-age=0',
+            $ownerName = 'Sin_Propietario';
+            if ($reporte->checklistInspection && $reporte->checklistInspection->owner) {
+                $ownerName = $reporte->checklistInspection->owner->name;
+            }
+            
+            // Limpiar caracteres especiales para el nombre del archivo
+            $cleanVesselName = preg_replace('/[^A-Za-z0-9_-]/', '_', $vesselName);
+            $cleanOwnerName = preg_replace('/[^A-Za-z0-9_-]/', '_', $ownerName);
+            
+            $downloadName = 'Reporte_' . $cleanOwnerName . '_' . $cleanVesselName . '_' . date('Y-m-d_H-i-s') . '.' . $extension;
+            
+            \Log::info('Descargando archivo:', [
+                'original_path' => $fullPath,
+                'download_name' => $downloadName,
+                'file_size' => $fileSize
             ]);
+            
+            // Determinar el Content-Type basado en la extensión
+            $contentType = match(strtolower($extension)) {
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc' => 'application/msword',
+                'pdf' => 'application/pdf',
+                default => 'application/octet-stream'
+            };
+            
+            // Devolver el archivo para descarga
+            return response()->download($fullPath, $downloadName, [
+                'Content-Type' => $contentType,
+                'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
+                'Cache-Control' => 'no-cache, must-revalidate',
+                'Expires' => '0',
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error('Reporte no encontrado: ID ' . $id);
+            abort(404, 'El reporte solicitado no existe en la base de datos.');
         } catch (\Exception $e) {
-            \Log::error('Error al descargar reporte: ' . $e->getMessage());
-            abort(404, 'No se pudo encontrar el reporte solicitado. Error: ' . $e->getMessage());
+            \Log::error('Error inesperado al descargar reporte:', [
+                'reporte_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            abort(500, 'Ocurrió un error interno al intentar descargar el reporte: ' . $e->getMessage());
         }
     }
 }
