@@ -335,6 +335,12 @@ class VesselResource extends Resource
                                     ->schema([
                                         static::createDocumentUploadGrid('sistema_gestao')
                                     ]),
+
+                                Section::make('DOCUMENTOS EXCLUSIVOS POR TIPO DE EMBARCACIÓN')
+                                    ->description('Documentos específicos según el tipo de embarcación')
+                                    ->schema([
+                                        static::createExclusiveDocumentUploadGrid()
+                                    ]),
                             ]),
                     ])
                     ->extraAttributes(['class' => 'bg-white'])
@@ -788,5 +794,98 @@ class VesselResource extends Resource
                 ->danger()
                 ->send();
         }
+    }
+
+    /**
+     * Crear grilla de documentos exclusivos por tipo de embarcación
+     */
+    protected static function createExclusiveDocumentUploadGrid(): Grid
+    {
+        $fields = [];
+        
+        // Documentos exclusivos para Barcazas
+        $barcazaDocuments = VesselDocumentType::getBarcazaExclusiveDocuments();
+        if (!empty($barcazaDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Barcazas')
+                ->description('Documentos específicos para embarcaciones tipo Barcaza')
+                ->schema(static::createDocumentFields($barcazaDocuments, 'barcaza_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+
+        // Documentos exclusivos para Empujadores
+        $empujadorDocuments = VesselDocumentType::getEmpujadorExclusiveDocuments();
+        if (!empty($empujadorDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Empujadores')
+                ->description('Documentos específicos para embarcaciones tipo Empujador')
+                ->schema(static::createDocumentFields($empujadorDocuments, 'empujador_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+
+        // Documentos exclusivos para Motochatas
+        $motochataDocuments = VesselDocumentType::getMotochataExclusiveDocuments();
+        if (!empty($motochataDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Motochatas')
+                ->description('Documentos específicos para embarcaciones tipo Motochata')
+                ->schema(static::createDocumentFields($motochataDocuments, 'motochata_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+        
+        return Grid::make(1)->schema($fields);
+    }
+
+    /**
+     * Crear campos de documentos para una categoría específica
+     */
+    protected static function createDocumentFields(array $documents, string $category): array
+    {
+        $fields = [];
+        
+        foreach ($documents as $documentType => $documentName) {
+            $fields[] = Forms\Components\FileUpload::make("document_{$documentType}")
+                ->label($documentName)
+                ->disk('local')
+                ->directory(function ($record) use ($category) {
+                    if ($record && $record->id) {
+                        // Embarcación existente
+                        return "vessel-documents/{$record->id}/{$category}";
+                    } else {
+                        // Nueva embarcación - usar directorio temporal
+                        return "vessel-documents/temp/{$category}";
+                    }
+                })
+                ->acceptedFileTypes(['application/pdf', 'image/png'])
+                ->maxSize(10240) // 10MB
+                ->helperText('Solo PDF y PNG. Máximo 10MB.')
+                ->afterStateUpdated(function ($state, $record, $component) use ($documentType, $category, $documentName) {
+                    if ($state && $record) {
+                        // El estado puede ser un array o un solo archivo
+                        $file = is_array($state) ? (count($state) > 0 ? $state[0] : null) : $state;
+                        if ($file) {
+                            static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                        }
+                    }
+                })
+                ->afterStateHydrated(function ($component, $record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document && $document->file_path) {
+                            // Para FileUpload, el estado debe ser un array de archivos
+                            $component->state([$document->file_path]);
+                        } else {
+                            // Si no hay documento, estado vacío
+                            $component->state([]);
+                        }
+                    }
+                })
+                ->downloadable()
+                ->openable()
+                ->deletable(true)
+                ->dehydrated(false);
+        }
+        
+        return [Grid::make(2)->schema($fields)];
     }
 }

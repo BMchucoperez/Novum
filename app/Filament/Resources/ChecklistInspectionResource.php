@@ -69,6 +69,17 @@ class ChecklistInspectionResource extends Resource
             VesselDocumentType::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo ',
             VesselDocumentType::PLANO_SOPEP => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP',
             VesselDocumentType::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio',
+            
+            // DOCUMENTOS EXCLUSIVOS PARA BARCAZAS
+            VesselDocumentType::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
+            
+            // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
+            VesselDocumentType::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS)',
+            VesselDocumentType::LICENCA_ESTACAO => 'Licença de estação de navio',
+            
+            // DOCUMENTOS EXCLUSIVOS PARA MOTOCHATAS
+            VesselDocumentType::MOTOCHATA_DOCUMENTO_1 => 'Documento especial motochata 1',
+            VesselDocumentType::MOTOCHATA_DOCUMENTO_2 => 'Documento especial motochata 2',
         ];
     }
 
@@ -138,6 +149,25 @@ class ChecklistInspectionResource extends Resource
                                     ->prefixIcon('heroicon-o-rectangle-stack')
                                     ->placeholder('Seleccione la embarcación...')
                                     ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
+                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                        if (!$state) {
+                                            return;
+                                        }
+                                        
+                                        // Obtener el tipo de embarcación
+                                        $vessel = Vessel::find($state);
+                                        if (!$vessel || !$vessel->serviceType) {
+                                            return;
+                                        }
+                                        
+                                        $vesselType = strtolower($vessel->serviceType->name);
+                                        $structure = ChecklistInspection::getDefaultStructure($vesselType);
+                                        
+                                        // Actualizar cada parte del checklist
+                                        for ($i = 1; $i <= 6; $i++) {
+                                            $set("parte_{$i}_items", $structure["parte_{$i}"]);
+                                        }
+                                    })
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 1,
@@ -287,8 +317,6 @@ class ChecklistInspectionResource extends Resource
 
     protected static function createChecklistSection(string $fieldName, string $title, int $parteNumber, bool $imageOnly = false): Repeater
     {
-        $defaultItems = ChecklistInspection::getDefaultStructure()["parte_{$parteNumber}"];
-
         return Repeater::make($fieldName)
             ->label($title)
             ->schema([
@@ -407,7 +435,7 @@ class ChecklistInspectionResource extends Resource
 
                                 // Archivos adjuntos o vista de documento existente
                                 Forms\Components\FileUpload::make('archivos_adjuntos')
-                                    ->label(function (Forms\Get $get) {
+                                    ->label(function (Forms\Get $get) use ($imageOnly) {
                                         $vesselId = $get('../../vessel_id');
                                         $itemName = $get('item');
                                         
@@ -432,7 +460,7 @@ class ChecklistInspectionResource extends Resource
                                         
                                         return '📁 Archivos Adjuntos';
                                     })
-                                    ->helperText(function (Forms\Get $get) {
+                                    ->helperText(function (Forms\Get $get) use ($imageOnly) {
                                         $vesselId = $get('../../vessel_id');
                                         $itemName = $get('item');
                                         
@@ -619,13 +647,19 @@ class ChecklistInspectionResource extends Resource
                                     ]),
                             ]),
                     ])
-                    ->compact()
-                    ->extraAttributes([
-                        'style' => 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 8px; background-color: #fafafa;'
-                    ]),
+                    ->collapsible()
+                    ->persistCollapsed(),
             ])
-            ->defaultItems(count($defaultItems))
-            ->default($defaultItems)
+            ->afterStateHydrated(function (Repeater $component, $state, Forms\Get $get) use ($parteNumber) {
+                // Si ya hay estado (editando), no sobrescribir
+                if (!empty($state)) {
+                    return;
+                }
+                
+                // Para nuevos registros, usar estructura por defecto
+                $defaultItems = ChecklistInspection::getDefaultStructure()["parte_{$parteNumber}"];
+                $component->state($defaultItems);
+            })
             ->addActionLabel("➕ Agregar ítem adicional")
             ->addAction(
                 fn (\Filament\Forms\Components\Actions\Action $action) => $action
@@ -648,19 +682,17 @@ class ChecklistInspectionResource extends Resource
                 //     default => ''
                 // };
                 
-                $priorityIcon = match($prioridad) {
-                    1 => '🔴',
-                    2 => '🟡',
-                    3 => '🟢',
-                    default => '⚪'
-                };
-                
-                return $priorityIcon . ' ' . ' ' . $item;
-            })
-            ->columnSpanFull()
-            ->extraAttributes([
-                'style' => 'background-color: #f9fafb; border-radius: 12px; padding: 20px;'
-            ]);
+                        // Mostrar prioridad como emoji al lado del nombre del ítem
+        $prioridad = $state['prioridad'] ?? 3;
+        $prioridadEmoji = match($prioridad) {
+            1 => '🔴',
+            2 => '🟡',
+            3 => '🟢',
+            default => ''
+        };
+        
+        return "{$prioridadEmoji} {$item}";
+            });
     }
 
     public static function table(Table $table): Table

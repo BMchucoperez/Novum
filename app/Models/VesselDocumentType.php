@@ -8,7 +8,6 @@ class VesselDocumentType
     const CERTIFICADO_ARQUEACAO = 'certificado_nacional_arqueacao';
     const CERTIFICADO_BORDA_LIVRE = 'certificado_borda_livre_navegacao_interior';
     const PROVISAO_REGISTRO = 'provisao_registro_propriedade_maritima';
-    const DECLARACAO_CONFORMIDADE = 'declaracao_conformidade_transporte_petroleo';
     const CERTIFICADO_SEGURANCA = 'certificado_seguranca_navegacao';
     const LICENCA_IPAAM = 'licenca_operacao_ipaam';
     const AUTORIZACAO_ANP = 'autorizacao_anp';
@@ -17,6 +16,21 @@ class VesselDocumentType
     const CERTIFICADO_REGULARIDADE = 'certificado_regularidade_ibama';
     const CERTIFICADO_ARMADOR = 'certificado_registro_armador_cra';
     const APOLICE_SEGURO = 'apolice_seguro_pi';
+
+    // DOCUMENTOS EXCLUSIVOS PARA BARCAZAS
+    const DECLARACAO_CONFORMIDADE = 'barcaza_declaracao_conformidade_transporte_petroleo';
+
+    // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
+    const CARTAO_TRIPULACAO = 'empujador_cartao_tripulacao_seguranca_cts';
+    const LICENCA_ESTACAO = 'empujador_licenca_estacao_navio';
+    const CERTIFICADO_CONTROLE = 'certificado_de_controle_de_praga';
+    const PLANO_INCENDIO = 'plano_de_incendio';
+    const OPERADOR_TECNICO = 'operador_tecnico';
+    const CREW_LIST = 'crew_list';
+
+    // DOCUMENTOS EXCLUSIVOS PARA MOTOCHATAS
+    const MOTOCHATA_DOCUMENTO_1 = 'motochata_documento_especial_1';
+    const MOTOCHATA_DOCUMENTO_2 = 'motochata_documento_especial_2';
 
     // DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
     const LIVRO_OLEO = 'livro_oleo';
@@ -40,7 +54,6 @@ class VesselDocumentType
             self::CERTIFICADO_ARQUEACAO => 'Certificado nacional de arqueação',
             self::CERTIFICADO_BORDA_LIVRE => 'Certificado nacional de borda livre para a navegação interior',
             self::PROVISAO_REGISTRO => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)',
-            self::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
             self::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação',
             self::LICENCA_IPAAM => 'Licença de operação - IPAAM',
             self::AUTORIZACAO_ANP => 'Autorização de ANP',
@@ -53,14 +66,13 @@ class VesselDocumentType
     }
 
     /**
-     * Obtener documentos por categoría SISTEMA DE GESTÃO DE BORDO
+     * Obtener documentos exclusivos para Barcazas
      */
-    public static function getSistemaGestaoDocuments(): array
+    public static function getBarcazaExclusiveDocuments(): array
     {
         return [
+            self::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
             self::LIVRO_OLEO => 'Livro de oleo',
-            self::PLANO_SEGURANCA => 'Plano de segurança',
-            self::PLANO_ARRANJO => 'Plano de arranjo geral',
             self::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
             self::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
             self::TESTE_OPACIDADE => 'Teste de Opacidade',
@@ -68,6 +80,43 @@ class VesselDocumentType
             self::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
             self::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo',
             self::PLANO_SOPEP => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP',
+        ];
+    }
+
+    /**
+     * Obtener documentos exclusivos para Empujadores
+     */
+    public static function getEmpujadorExclusiveDocuments(): array
+    {
+        return [
+            self::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS)',
+            self::LICENCA_ESTACAO => 'Licença de estação de navio',
+            self::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga',
+            self::PLANO_INCENDIO => 'Plano de incêndio',
+            self::OPERADOR_TECNICO => 'Operador técnico',
+            self::CREW_LIST => 'Crew List',
+        ];
+    }
+
+    /**
+     * Obtener documentos exclusivos para Motochatas
+     */
+    public static function getMotochataExclusiveDocuments(): array
+    {
+        return [
+            self::MOTOCHATA_DOCUMENTO_1 => 'Documento especial motochata 1',
+            self::MOTOCHATA_DOCUMENTO_2 => 'Documento especial motochata 2',
+        ];
+    }
+
+    /**
+     * Obtener documentos por categoría SISTEMA DE GESTÃO DE BORDO
+     */
+    public static function getSistemaGestaoDocuments(): array
+    {
+        return [
+            self::PLANO_SEGURANCA => 'Plano de segurança',
+            self::PLANO_ARRANJO => 'Plano de arranjo geral',
             self::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio',
         ];
     }
@@ -79,7 +128,10 @@ class VesselDocumentType
     {
         return array_merge(
             self::getBandeiraApolicesDocuments(),
-            self::getSistemaGestaoDocuments()
+            self::getSistemaGestaoDocuments(),
+            self::getBarcazaExclusiveDocuments(),
+            self::getEmpujadorExclusiveDocuments(),
+            self::getMotochataExclusiveDocuments()
         );
     }
 
@@ -95,8 +147,37 @@ class VesselDocumentType
         if (array_key_exists($documentType, self::getSistemaGestaoDocuments())) {
             return 'sistema_gestao';
         }
+
+        if (array_key_exists($documentType, self::getBarcazaExclusiveDocuments())) {
+            return 'barcaza_exclusive';
+        }
+
+        if (array_key_exists($documentType, self::getEmpujadorExclusiveDocuments())) {
+            return 'empujador_exclusive';
+        }
+
+        if (array_key_exists($documentType, self::getMotochataExclusiveDocuments())) {
+            return 'motochata_exclusive';
+        }
         
         throw new \InvalidArgumentException("Tipo de documento no válido: {$documentType}");
+    }
+
+    /**
+     * Obtener documentos exclusivos por tipo de embarcación
+     */
+    public static function getExclusiveDocumentsByVesselType(string $vesselType): array
+    {
+        switch (strtolower($vesselType)) {
+            case 'barcaza':
+                return self::getBarcazaExclusiveDocuments();
+            case 'empujador':
+                return self::getEmpujadorExclusiveDocuments();
+            case 'motochata':
+                return self::getMotochataExclusiveDocuments();
+            default:
+                return [];
+        }
     }
 
     /**
