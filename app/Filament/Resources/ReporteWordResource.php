@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 
@@ -119,7 +120,7 @@ class ReporteWordResource extends Resource
                                 return redirect()->route('filament.admin.resources.reporte-words.index');
                                 
                             } catch (\Exception $e) {
-                                \Log::error('Error en la generación del reporte: ' . $e->getMessage(), [
+                                Log::error('Error en la generación del reporte: ' . $e->getMessage(), [
                                     'checklist_inspection_id' => $checklistInspectionId ?? null,
                                     'user_id' => Auth::id(),
                                     'trace' => $e->getTraceAsString()
@@ -287,183 +288,148 @@ class ReporteWordResource extends Resource
         try {
             $inspection = ChecklistInspection::with(['owner', 'vessel'])->find($checklistInspectionId);
             
-            if (!$inspection) {
-                \Log::error('Inspección no encontrada: ' . $checklistInspectionId);
+            if (!$inspection || !$inspection->owner || !$inspection->vessel) {
                 Notification::make()
                     ->danger()
                     ->title('Error')
-                    ->body('La inspección seleccionada no existe.')
+                    ->body('Datos de inspección incompletos.')
                     ->send();
                 return null;
             }
             
-            // Verificar que las relaciones existen
-            if (!$inspection->owner || !$inspection->vessel) {
-                \Log::error('Faltan datos relacionados para la inspección: ' . $checklistInspectionId);
-                Notification::make()
-                    ->danger()
-                    ->title('Error')
-                    ->body('Faltan datos del propietario o la embarcación.')
-                    ->send();
-                return null;
-            }
+            // CONFIGURACIONES CRÍTICAS para prevenir corrupción según documentación PHPWord 1.4.0
+            // 1. Habilitar output escaping (CRÍTICO para caracteres especiales)
+            \PhpOffice\PhpWord\Settings::setOutputEscapingEnabled(true);
             
-            // Create a new PhpWord instance
+            // 2. Configurar compatibilidad XML (requerido para OpenOffice/LibreOffice)
+            \PhpOffice\PhpWord\Settings::setCompatibility(true);
+            
+            // Crear archivo temporal usando la técnica correcta
+            $tempPath = tempnam(sys_get_temp_dir(), 'pw_') . '.docx';
+            
             $phpWord = new PhpWord();
             
-            // Add a section
+            // 3. Configurar propiedades del documento para prevenir errores
+            $phpWord->getSettings()->setHideGrammaticalErrors(true);
+            $phpWord->getSettings()->setHideSpellingErrors(true);
             $section = $phpWord->addSection();
             
-            // Define styles
-            $phpWord->addFontStyle('titleStyle', ['bold' => true, 'size' => 16]);
-            $phpWord->addFontStyle('headerStyle', ['bold' => true, 'size' => 12]);
-            $phpWord->addFontStyle('normalStyle', ['size' => 10]);
+            // 4. Usar estilos definidos para mejor compatibilidad
+            $titleStyle = ['name' => 'Arial', 'size' => 16, 'bold' => true];
+            $headerStyle = ['name' => 'Arial', 'size' => 14, 'bold' => true];
+            $normalStyle = ['name' => 'Arial', 'size' => 12];
             
-            // Add title
-            $section->addText('INFORME DE INSPECCIÓN CHECKLIST', 'titleStyle');
-            $section->addTextBreak();
+            // Contenido del reporte con estilos apropiados
+            $section->addText('INFORME DE INSPECCIÓN CHECKLIST', $titleStyle);
+            $section->addTextBreak(1);
+            $section->addText('========================================', $normalStyle);
+            $section->addTextBreak(1);
+            $section->addText('INFORMACIÓN GENERAL', $headerStyle);
+            $section->addTextBreak(1);
             
-            // Basic information
-            $section->addText('INFORMACIÓN GENERAL', 'headerStyle');
-            $section->addText('-----------------------------------------');
-            $section->addText('Propietario: ' . $inspection->owner->name, 'normalStyle');
-            $section->addText('Embarcación: ' . $inspection->vessel->name, 'normalStyle');
-            $section->addText('Fecha de Inicio: ' . $inspection->inspection_start_date->format('d/m/Y'), 'normalStyle');
-            $section->addText('Fecha de Fin: ' . $inspection->inspection_end_date->format('d/m/Y'), 'normalStyle');
-            $section->addText('Fecha de Convoy: ' . $inspection->convoy_date->format('d/m/Y'), 'normalStyle');
-            $section->addText('Inspector: ' . $inspection->inspector_name, 'normalStyle');
-            $section->addText('Estado General: ' . ($inspection->overall_status ?? 'No definido'), 'normalStyle');
-            $section->addTextBreak();
+            // Usar htmlspecialchars para escapar caracteres especiales
+            $section->addText('Propietario: ' . htmlspecialchars($inspection->owner->name, ENT_QUOTES, 'UTF-8'), $normalStyle);
+            $section->addText('Embarcación: ' . htmlspecialchars($inspection->vessel->name, ENT_QUOTES, 'UTF-8'), $normalStyle);
+            $section->addText('Inspector: ' . htmlspecialchars($inspection->inspector_name, ENT_QUOTES, 'UTF-8'), $normalStyle);
+            $section->addText('Fecha: ' . $inspection->inspection_start_date->format('d/m/Y'), $normalStyle);
+            $section->addText('Estado: ' . htmlspecialchars($inspection->overall_status ?? 'N/A', ENT_QUOTES, 'UTF-8'), $normalStyle);
+            $section->addTextBreak(1);
             
-            // Parts summary
-            $partes = [
-                1 => 'DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO',
-                2 => 'DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO',
-                3 => 'CASCO Y ESTRUTURAS',
-                4 => 'SISTEMAS DE CARGA E DESCARGA E DE ALARME DE NIVEL',
-                5 => 'SEGURANÇA, SALVAMENTO, CONTRA INCÊNDIO E LUZES DE NAVEGAÇÃO',
-                6 => 'SISTEMA DE AMARRAÇÃO'
-            ];
-            
-            foreach ($partes as $parteNum => $parteNombre) {
-                // Add part title
-                $section->addTextBreak();
-                $section->addText('PARTE ' . $parteNum . ': ' . $parteNombre, 'headerStyle');
-                $section->addText('-----------------------------------------');
+            // Partes del checklist con mejor manejo de caracteres especiales
+            for ($i = 1; $i <= 6; $i++) {
+                $section->addText('PARTE ' . $i, $headerStyle);
+                $section->addText('--------', $normalStyle);
+                $section->addTextBreak(1);
                 
-                $items = $inspection->{"parte_{$parteNum}_items"};
+                $items = $inspection->{"parte_{$i}_items"} ?? [];
                 
                 if (empty($items)) {
-                    $section->addText('No hay items para esta parte.', 'normalStyle');
-                    continue;
-                }
-                
-                // List items
-                foreach ($items as $index => $item) {
-                    $estado = match($item['estado'] ?? null) {
-                        'V' => 'Vigente',
-                        'A' => 'Anual',
-                        'N' => 'No Aplica',
-                        'R' => 'Rechazado',
-                        default => $item['estado'] ?? 'Sin estado'
-                    };
-                    
-                    $section->addText('Item ' . ($index + 1) . ': ' . ($item['item'] ?? 'Item sin descripción'), 'normalStyle');
-                    $section->addText('Estado: ' . $estado, 'normalStyle');
-                    
-                    if (!empty($item['comentarios'])) {
-                        $section->addText('Comentarios: ' . $item['comentarios'], 'normalStyle');
+                    $section->addText('Sin items', $normalStyle);
+                } else {
+                    foreach ($items as $index => $item) {
+                        $itemText = htmlspecialchars($item['item'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
+                        $estadoText = htmlspecialchars($item['estado'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
+                        
+                        $section->addText(($index + 1) . '. ' . $itemText, $normalStyle);
+                        $section->addText('   Estado: ' . $estadoText, $normalStyle);
+                        
+                        if (!empty($item['comentarios'])) {
+                            $comentarios = htmlspecialchars($item['comentarios'], ENT_QUOTES, 'UTF-8');
+                            $section->addText('   Comentarios: ' . $comentarios, $normalStyle);
+                        }
+                        $section->addTextBreak(1);
                     }
-                    
-                    $section->addTextBreak();
                 }
+                $section->addTextBreak(1);
             }
             
-            // Add general observations if available
+            // Observaciones generales con escape de caracteres
             if (!empty($inspection->general_observations)) {
-                $section->addTextBreak();
-                $section->addText('OBSERVACIONES GENERALES', 'headerStyle');
-                $section->addText('-----------------------------------------');
-                $section->addText($inspection->general_observations, 'normalStyle');
+                $section->addText('OBSERVACIONES GENERALES', $headerStyle);
+                $section->addTextBreak(1);
+                $observations = htmlspecialchars($inspection->general_observations, ENT_QUOTES, 'UTF-8');
+                $section->addText($observations, $normalStyle);
             }
             
-            // Generate unique filename
-            $fileName = 'reporte_checklist_' . $inspection->id . '_' . time() . '.docx';
-            $filePath = 'reports/' . $fileName;
-            $fullPath = storage_path('app/private/' . $filePath);
-            
-            // Create directory if it doesn't exist
-            $directory = dirname($fullPath);
-            if (!file_exists($directory)) {
-                \Log::info('Creando directorio: ' . $directory);
-                if (!mkdir($directory, 0755, true)) {
-                    \Log::error('No se pudo crear el directorio: ' . $directory);
-                    Notification::make()
-                        ->danger()
-                        ->title('Error')
-                        ->body('No se pudo crear el directorio para el reporte.')
-                        ->send();
-                    return null;
-                }
-            }
-            
-            // Save the document
+            // 5. Guardar usando IOFactory con configuración robusta
             try {
-                $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-                $objWriter->save($fullPath);
+                $writer = IOFactory::createWriter($phpWord, 'Word2007');
+                $writer->save($tempPath);
+                
+                // Verificar que el archivo se generó correctamente con validaciones más estrictas
+                if (!file_exists($tempPath)) {
+                    throw new \Exception('Archivo temporal no fue creado');
+                }
+                
+                $fileSize = filesize($tempPath);
+                if ($fileSize < 1000) {
+                    throw new \Exception('Archivo generado demasiado pequeño (' . $fileSize . ' bytes), posiblemente corrupto');
+                }
+                
+                // Verificar que el archivo es un ZIP válido (los .docx son archivos ZIP)
+                $zip = new \ZipArchive();
+                if ($zip->open($tempPath, \ZipArchive::CHECKCONS) !== TRUE) {
+                    throw new \Exception('El archivo generado no es un documento Word válido');
+                }
+                $zip->close();
+                
             } catch (\Exception $writerException) {
-                \Log::error('Error with Word2007 writer: ' . $writerException->getMessage());
-                
-                // Try with a simpler approach
-                $simplePhpWord = new PhpWord();
-                $simpleSection = $simplePhpWord->addSection();
-                $simpleSection->addText('INFORME DE INSPECCIÓN CHECKLIST');
-                $simpleSection->addText('');
-                $simpleSection->addText('Propietario: ' . $inspection->owner->name);
-                $simpleSection->addText('Embarcación: ' . $inspection->vessel->name);
-                $simpleSection->addText('Fecha de Inspección: ' . $inspection->inspection_start_date->format('d/m/Y'));
-                $simpleSection->addText('Inspector: ' . $inspection->inspector_name);
-                
-                $simpleWriter = IOFactory::createWriter($simplePhpWord, 'Word2007');
-                $simpleWriter->save($fullPath);
+                if (file_exists($tempPath)) {
+                    unlink($tempPath);
+                }
+                throw new \Exception('Error al generar el documento Word: ' . $writerException->getMessage());
             }
             
-            // Verify file was created
-            if (!file_exists($fullPath)) {
-                \Log::error('El archivo no se creó: ' . $fullPath);
-                Notification::make()
-                    ->danger()
-                    ->title('Error')
-                    ->body('El archivo no se creó correctamente.')
-                    ->send();
-                return null;
+            // Crear nombre descriptivo
+            $vesselName = preg_replace('/[^A-Za-z0-9_-]/', '_', $inspection->vessel->name);
+            $ownerName = preg_replace('/[^A-Za-z0-9_-]/', '_', $inspection->owner->name);
+            $fileName = 'Reporte_' . $ownerName . '_' . $vesselName . '_' . date('Y-m-d_H-i-s') . '.docx';
+            $filePath = 'reports/' . $fileName;
+            $finalPath = storage_path('app/private/' . $filePath);
+            
+            // Crear directorio si no existe
+            $directory = dirname($finalPath);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
             }
             
-            // Verify file size
-            $fileSize = filesize($fullPath);
-            if ($fileSize === false || $fileSize < 1000) {
-                \Log::error('El archivo creado es muy pequeño o está corrupto: ' . $fullPath . ' (' . $fileSize . ' bytes)');
-                Notification::make()
-                    ->danger()
-                    ->title('Error')
-                    ->body('El archivo generado parece estar corrupto.')
-                    ->send();
-                return null;
+            // Mover archivo
+            if (!rename($tempPath, $finalPath)) {
+                throw new \Exception('No se pudo mover el archivo al directorio final');
             }
             
-            \Log::info('Reporte Word generado exitosamente: ' . $fullPath . ' (' . $fileSize . ' bytes)');
             return $filePath;
             
         } catch (\Exception $e) {
-            \Log::error('Error al generar el reporte Word: ' . $e->getMessage(), [
-                'checklist_inspection_id' => $checklistInspectionId,
+            Log::error('Error generando reporte: ' . $e->getMessage(), [
+                'inspection_id' => $checklistInspectionId ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
             
             Notification::make()
                 ->danger()
-                ->title('Error al generar el reporte')
-                ->body('Ocurrió un error técnico: ' . $e->getMessage())
+                ->title('Error')
+                ->body('No se pudo generar el reporte: ' . $e->getMessage())
                 ->send();
             
             return null;
