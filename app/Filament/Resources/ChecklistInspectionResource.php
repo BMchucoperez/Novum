@@ -432,7 +432,7 @@ class ChecklistInspectionResource extends Resource
                                         
                                         return '📁 Archivos Adjuntos';
                                     })
-                                    ->helperText(function (Forms\Get $get) {
+                                    ->helperText(function (Forms\Get $get) use ($imageOnly) {
                                         $vesselId = $get('../../vessel_id');
                                         $itemName = $get('item');
                                         

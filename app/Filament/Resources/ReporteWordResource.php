@@ -466,65 +466,388 @@ class ReporteWordResource extends Resource
             }
             $section->addTextBreak(2);
             
-            // 13. Partes del checklist con tablas estructuradas
+            // 13. Partes del checklist con extracción mejorada de datos
             $parteTitles = [
-                1 => 'DOCUMENTOS DE BANDERA E PÓLIZAS DE SEGURO',
-                2 => 'DOCUMENTOS DEL SISTEMA DE GESTIÓN DE BORDO', 
-                3 => 'CASCO Y ESTRUCTURAS',
-                4 => 'SISTEMAS DE SEGURIDAD',
-                5 => 'EQUIPOS DE NAVEGACIÓN',
-                6 => 'SISTEMAS ELÉCTRICOS Y MECÁNICOS'
+                1 => 'PARTE 1: DOCUMENTOS DE BANDERA Y PÓLIZAS DE SEGURO',
+                2 => 'PARTE 2: DOCUMENTOS DEL SISTEMA DE GESTIÓN DE BORDO',
+                3 => 'PARTE 3: CASCO Y ESTRUCTURAS - INSPECCIÓN VISUAL',
+                4 => 'PARTE 4: SISTEMAS DE SEGURIDAD Y OPERACIONALES',
+                5 => 'PARTE 5: EQUIPOS DE NAVEGACIÓN Y SEÑALIZACIÓN',
+                6 => 'PARTE 6: SISTEMAS DE AMARRE Y CONEXIONES'
             ];
             
             for ($i = 1; $i <= 6; $i++) {
-                $section->addText('PARTE ' . $i . ': ' . $parteTitles[$i], 'headerStyle', 'headerParagraph');
+                $section->addText($parteTitles[$i], 'headerStyle', 'headerParagraph');
                 $section->addTextBreak(1);
                 
-                $items = $inspection->{"parte_{$i}_items"} ?? [];
+                // Obtener y validar datos del checklist
+                $items = $inspection->{"parte_{$i}_items"};
                 
-                if (empty($items)) {
-                    $section->addText('Sin items registrados', 'emphasisStyle', 'normalParagraph');
-                } else {
-                    // Crear tabla para los items del checklist
-                    $checklistTable = $section->addTable('checklistTable');
+                // Validación robusta de datos
+                if (!is_array($items) || empty($items)) {
+                    $section->addText('❌ Sin items registrados para esta parte', 'emphasisStyle', 'normalParagraph');
+                    $section->addTextBreak(2);
+                    continue;
+                }
+                
+                // Crear tabla extendida para todos los campos del checklist
+                $checklistTable = $section->addTable('checklistTable');
+                
+                // Encabezado de la tabla con más columnas
+                $checklistTable->addRow();
+                $checklistTable->addCell(800, ['bgColor' => $colorScheme['secondary']])->addText('#', 'whiteStyle');
+                $checklistTable->addCell(4000, ['bgColor' => $colorScheme['secondary']])->addText('Ítem de Inspección', 'whiteStyle');
+                $checklistTable->addCell(1000, ['bgColor' => $colorScheme['secondary']])->addText('Prioridad', 'whiteStyle');
+                $checklistTable->addCell(1200, ['bgColor' => $colorScheme['secondary']])->addText('Estado', 'whiteStyle');
+                $checklistTable->addCell(1000, ['bgColor' => $colorScheme['secondary']])->addText('Archivos', 'whiteStyle');
+                $checklistTable->addCell(3000, ['bgColor' => $colorScheme['secondary']])->addText('Observaciones', 'whiteStyle');
+                
+                // Contador de items válidos
+                $itemCount = 0;
+                
+                foreach ($items as $index => $item) {
+                    // Validar estructura del item
+                    if (!is_array($item)) {
+                        continue;
+                    }
                     
-                    // Encabezado de la tabla
-                    $checklistTable->addRow();
-                    $checklistTable->addCell(1000, ['bgColor' => $colorScheme['secondary']])->addText('#', 'whiteStyle');
-                    $checklistTable->addCell(5000, ['bgColor' => $colorScheme['secondary']])->addText('Item', 'whiteStyle');
-                    $checklistTable->addCell(1500, ['bgColor' => $colorScheme['secondary']])->addText('Estado', 'whiteStyle');
-                    $checklistTable->addCell(3500, ['bgColor' => $colorScheme['secondary']])->addText('Comentarios', 'whiteStyle');
+                    $itemCount++;
                     
-                    foreach ($items as $index => $item) {
-                        $itemText = htmlspecialchars($item['item'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
-                        $estadoText = htmlspecialchars($item['estado'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
-                        $comentarios = htmlspecialchars($item['comentarios'] ?? '', ENT_QUOTES, 'UTF-8');
+                    // Extraer todos los campos con validación mejorada
+                    $itemText = htmlspecialchars($item['item'] ?? 'Ítem no especificado', ENT_QUOTES, 'UTF-8');
+                    
+                    // CORRECCIÓN MEJORADA: Obtener el estado real del formulario con todas las verificaciones
+                    $estadoRaw = $item['estado'] ?? '';
+                    $estadoText = trim($estadoRaw);
+                    
+                    // Si el estado está vacío o es null, verificar los checkboxes según la lógica del sistema
+                    if (empty($estadoText)) {
+                        $checkbox1 = $item['checkbox_1'] ?? false;
+                        $checkbox2 = $item['checkbox_2'] ?? false;
                         
-                        // Determinar color según el estado
-                        $estadoColor = $colorScheme['mediumGray'];
-                        $estadoFont = 'normalStyle';
-                        
-                        if (stripos($estadoText, 'aprobado') !== false || stripos($estadoText, 'ok') !== false) {
+                        // Checkbox2 es el definitivo según ChecklistInspectionResource línea 346-362
+                        if ($checkbox2) {
+                            $estadoText = 'V'; // Checkbox2 marcado = Estado V automático
+                        } elseif ($checkbox1) {
+                            $estadoText = 'Verificado';
+                        } else {
+                            $estadoText = 'Sin evaluar';
+                        }
+                    }
+                    
+                    $prioridad = $item['prioridad'] ?? 3;
+                    
+                    // CORRECCIÓN MEJORADA: Obtener comentarios/observaciones con múltiples variantes de campo
+                    $comentarios = '';
+                    // Verificar diferentes nombres de campo para comentarios
+                    if (!empty($item['comentarios'])) {
+                        $comentarios = $item['comentarios'];
+                    } elseif (!empty($item['observaciones'])) {
+                        $comentarios = $item['observaciones'];
+                    } elseif (!empty($item['comments'])) {
+                        $comentarios = $item['comments'];
+                    }
+                    $comentarios = htmlspecialchars($comentarios, ENT_QUOTES, 'UTF-8');
+                    
+                    // CORRECCIÓN MEJORADA: Obtener archivos adjuntos reales del sistema con validación más robusta
+                    $archivosAdjuntos = $item['archivos_adjuntos'] ?? [];
+                    
+                    // Los archivos se pueden guardar como array de rutas o como array de objetos
+                    $archivosValidos = [];
+                    $totalSizeBytes = 0;
+                    
+                    if (is_array($archivosAdjuntos)) {
+                        foreach ($archivosAdjuntos as $archivo) {
+                            $rutaArchivo = '';
+                            
+                            // Manejar diferentes formatos de archivos adjuntos
+                            if (is_string($archivo)) {
+                                $rutaArchivo = $archivo;
+                            } elseif (is_array($archivo) && isset($archivo['path'])) {
+                                $rutaArchivo = $archivo['path'];
+                            } elseif (is_array($archivo) && isset($archivo['file'])) {
+                                $rutaArchivo = $archivo['file'];
+                            }
+                            
+                            if (!empty($rutaArchivo)) {
+                                // Verificar si el archivo existe físicamente
+                                $rutaCompleta = storage_path('app/private/' . $rutaArchivo);
+                                if (file_exists($rutaCompleta)) {
+                                    $archivosValidos[] = [
+                                        'ruta' => $rutaArchivo,
+                                        'nombre' => basename($rutaArchivo),
+                                        'size' => filesize($rutaCompleta)
+                                    ];
+                                    $totalSizeBytes += filesize($rutaCompleta);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Determinar color según el estado del sistema ChecklistInspection
+                    $estadoColor = $colorScheme['mediumGray'];
+                    $estadoFont = 'normalStyle';
+                    $estadoDescripcion = $estadoText;
+                    
+                    // Mapear estados según el sistema real
+                    switch (strtoupper(trim($estadoText))) {
+                        case 'V':
                             $estadoColor = $colorScheme['success'];
                             $estadoFont = 'whiteStyle';
-                        } elseif (stripos($estadoText, 'rechazado') !== false || stripos($estadoText, 'falla') !== false) {
+                            $estadoDescripcion = 'V - Conforme';
+                            break;
+                        case 'A':
+                            $estadoColor = $colorScheme['warning'];
+                            $estadoDescripcion = 'A - Con Observaciones';
+                            break;
+                        case 'N':
                             $estadoColor = $colorScheme['danger'];
                             $estadoFont = 'whiteStyle';
-                        } elseif (stripos($estadoText, 'pendiente') !== false || stripos($estadoText, 'revision') !== false) {
-                            $estadoColor = $colorScheme['warning'];
+                            $estadoDescripcion = 'N - No Conforme';
+                            break;
+                        case 'R':
+                            $estadoColor = $colorScheme['danger'];
+                            $estadoFont = 'whiteStyle';
+                            $estadoDescripcion = 'R - Rechazado';
+                            break;
+                        case 'VERIFICADO':
+                            $estadoColor = $colorScheme['accent'];
+                            $estadoDescripcion = 'Verificado';
+                            break;
+                        case 'SIN EVALUAR':
+                        case '':
+                            $estadoColor = $colorScheme['lightGray'];
+                            $estadoDescripcion = 'Sin evaluar';
+                            break;
+                        default:
+                            $estadoDescripcion = htmlspecialchars($estadoText, ENT_QUOTES, 'UTF-8');
+                    }
+                    
+                    // Determinar color y texto de prioridad
+                    $prioridadColor = $colorScheme['mediumGray'];
+                    $prioridadFont = 'normalStyle';
+                    $prioridadText = 'Media';
+                    
+                    switch ($prioridad) {
+                        case 1:
+                            $prioridadColor = $colorScheme['danger'];
+                            $prioridadFont = 'whiteStyle';
+                            $prioridadText = 'Crítica';
+                            break;
+                        case 2:
+                            $prioridadColor = $colorScheme['warning'];
+                            $prioridadText = 'Alta';
+                            break;
+                        case 3:
+                            $prioridadColor = $colorScheme['lightGray'];
+                            $prioridadText = 'Media';
+                            break;
+                    }
+                    
+                    // Información de archivos adjuntos REALES con detalles mejorados
+                    $archivosText = '📄 Sin archivos';
+                    $archivosColor = $colorScheme['lightGray'];
+                    
+                    if (!empty($archivosValidos)) {
+                        $cantidadArchivos = count($archivosValidos);
+                        $archivosText = "📎 {$cantidadArchivos} archivo" . ($cantidadArchivos > 1 ? 's' : '') . ' adjunto' . ($cantidadArchivos > 1 ? 's' : '');
+                        $archivosColor = $colorScheme['accent'];
+                        
+                        // Agregar tamaños de archivo con formato mejorado
+                        if ($totalSizeBytes > 0) {
+                            if ($totalSizeBytes < 1024) {
+                                $sizeText = $totalSizeBytes . ' bytes';
+                            } elseif ($totalSizeBytes < 1024 * 1024) {
+                                $sizeText = round($totalSizeBytes / 1024, 1) . ' KB';
+                            } else {
+                                $sizeText = round($totalSizeBytes / (1024 * 1024), 1) . ' MB';
+                            }
+                            $archivosText .= " ({$sizeText})";
                         }
                         
-                        $checklistTable->addRow();
-                        $checklistTable->addCell(1000)->addText(($index + 1), 'normalStyle');
-                        $checklistTable->addCell(5000)->addText($itemText, 'normalStyle');
-                        $checklistTable->addCell(1500, ['bgColor' => $estadoColor])->addText($estadoText, $estadoFont);
-                        $checklistTable->addCell(3500)->addText($comentarios ?: '-', 'normalStyle');
+                        // Añadir información sobre tipos de archivo si hay variedad
+                        $extensiones = [];
+                        foreach ($archivosValidos as $archivo) {
+                            $ext = strtoupper(pathinfo($archivo['nombre'], PATHINFO_EXTENSION));
+                            if (!empty($ext) && !in_array($ext, $extensiones)) {
+                                $extensiones[] = $ext;
+                            }
+                        }
+                        if (count($extensiones) <= 3 && !empty($extensiones)) {
+                            $archivosText .= ' [' . implode(', ', $extensiones) . ']';
+                        }
                     }
+                    
+                    // Agregar fila con datos completos y corregidos
+                    $checklistTable->addRow();
+                    $checklistTable->addCell(800)->addText($itemCount, 'normalStyle');
+                    $checklistTable->addCell(4000)->addText($itemText, 'normalStyle');
+                    $checklistTable->addCell(1000, ['bgColor' => $prioridadColor])->addText($prioridadText, $prioridadFont);
+                    $checklistTable->addCell(1200, ['bgColor' => $estadoColor])->addText($estadoDescripcion, $estadoFont);
+                    $checklistTable->addCell(1000, ['bgColor' => $archivosColor])->addText($archivosText, 'normalStyle');
+                    $checklistTable->addCell(3000)->addText($comentarios ?: 'Sin observaciones', 'normalStyle');
                 }
+                
+                // Agregar resumen de la parte
+                if ($itemCount > 0) {
+                    $section->addTextBreak(1);
+                    $resumenTable = $section->addTable([
+                        'borderSize' => 6,
+                        'borderColor' => $colorScheme['mediumGray'],
+                        'cellMargin' => 80,
+                        'width' => 100 * 50,
+                        'unit' => 'pct'
+                    ]);
+                    
+                    $resumenTable->addRow();
+                    $resumenTable->addCell(10000, ['bgColor' => $colorScheme['lightGray']])
+                        ->addText("📊 Resumen: {$itemCount} ítems evaluados en esta parte", 'emphasisStyle');
+                }
+                
                 $section->addTextBreak(2);
             }
             
-            // 14. Observaciones generales con estilo mejorado
+            // 14. Resumen estadístico de la inspección
+            $section->addText('RESUMEN ESTADÍSTICO DE LA INSPECCIÓN', 'headerStyle', 'headerParagraph');
+            $section->addTextBreak(1);
+            
+            // Calcular estadísticas generales mejoradas
+            $totalItems = 0;
+            $estadosCounts = ['V' => 0, 'A' => 0, 'N' => 0, 'R' => 0, 'Sin evaluar' => 0, 'Verificado' => 0];
+            $prioridadesCounts = [1 => 0, 2 => 0, 3 => 0];
+            $totalArchivos = 0;
+            $totalSizeBytes = 0;
+            
+            for ($i = 1; $i <= 6; $i++) {
+                $items = $inspection->{"parte_{$i}_items"};
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        if (is_array($item)) {
+                            $totalItems++;
+                            
+                            // Procesar estado igual que en la sección principal
+                            $estadoRaw = $item['estado'] ?? '';
+                            $estadoText = trim($estadoRaw);
+                            
+                            if (empty($estadoText)) {
+                                $checkbox1 = $item['checkbox_1'] ?? false;
+                                $checkbox2 = $item['checkbox_2'] ?? false;
+                                
+                                if ($checkbox2) {
+                                    $estadoText = 'V';
+                                } elseif ($checkbox1) {
+                                    $estadoText = 'Verificado';
+                                } else {
+                                    $estadoText = 'Sin evaluar';
+                                }
+                            }
+                            
+                            $prioridad = $item['prioridad'] ?? 3;
+                            $archivos = $item['archivos_adjuntos'] ?? [];
+                            
+                            // Contar estados correctamente
+                            $estadosCounts[$estadoText] = ($estadosCounts[$estadoText] ?? 0) + 1;
+                            $prioridadesCounts[$prioridad] = ($prioridadesCounts[$prioridad] ?? 0) + 1;
+                            
+                            // Contar archivos válidos
+                            if (is_array($archivos)) {
+                                foreach ($archivos as $archivo) {
+                                    $rutaArchivo = '';
+                                    if (is_string($archivo)) {
+                                        $rutaArchivo = $archivo;
+                                    } elseif (is_array($archivo) && isset($archivo['path'])) {
+                                        $rutaArchivo = $archivo['path'];
+                                    }
+                                    
+                                    if (!empty($rutaArchivo)) {
+                                        $rutaCompleta = storage_path('app/private/' . $rutaArchivo);
+                                        if (file_exists($rutaCompleta)) {
+                                            $totalArchivos++;
+                                            $totalSizeBytes += filesize($rutaCompleta);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Tabla de resumen estadístico
+            $resumenTable = $section->addTable('infoTable');
+            
+            // Encabezado del resumen
+            $resumenTable->addRow();
+            $resumenTable->addCell(5000, ['bgColor' => $colorScheme['primary']])->addText('Concepto', 'whiteStyle');
+            $resumenTable->addCell(5000, ['bgColor' => $colorScheme['primary']])->addText('Cantidad / Porcentaje', 'whiteStyle');
+            
+            // Total de items
+            $resumenTable->addRow();
+            $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText('Total de Ítems Inspeccionados', 'subHeaderStyle');
+            $resumenTable->addCell(5000)->addText($totalItems . ' ítems', 'normalStyle');
+            
+            // Estados (incluyendo los nuevos estados detectados)
+            foreach (['V' => 'Conforme', 'A' => 'Con Observaciones', 'N' => 'No Conforme', 'R' => 'Rechazado', 'Verificado' => 'Verificado', 'Sin evaluar' => 'Sin Evaluar'] as $codigo => $descripcion) {
+                $cantidad = $estadosCounts[$codigo] ?? 0;
+                
+                // Solo mostrar estados que tienen al menos 1 item
+                if ($cantidad > 0) {
+                    $porcentaje = $totalItems > 0 ? round(($cantidad / $totalItems) * 100, 1) : 0;
+                    
+                    $colorFondo = $colorScheme['lightGray'];
+                    $fontStyle = 'normalStyle';
+                    switch ($codigo) {
+                        case 'V': 
+                            $colorFondo = $colorScheme['success']; 
+                            $fontStyle = 'whiteStyle';
+                            break;
+                        case 'A': 
+                            $colorFondo = $colorScheme['warning']; 
+                            break;
+                        case 'N':
+                        case 'R': 
+                            $colorFondo = $colorScheme['danger'];
+                            $fontStyle = 'whiteStyle';
+                            break;
+                        case 'Verificado':
+                            $colorFondo = $colorScheme['accent'];
+                            break;
+                    }
+                    
+                    $resumenTable->addRow();
+                    $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText("Estado {$codigo} - {$descripcion}", 'subHeaderStyle');
+                    $resumenTable->addCell(5000, ['bgColor' => $colorFondo])->addText("{$cantidad} ({$porcentaje}%)", $fontStyle);
+                }
+            }
+            
+            // Prioridades
+            foreach ([1 => 'Crítica', 2 => 'Alta', 3 => 'Media'] as $nivel => $descripcion) {
+                $cantidad = $prioridadesCounts[$nivel] ?? 0;
+                $porcentaje = $totalItems > 0 ? round(($cantidad / $totalItems) * 100, 1) : 0;
+                
+                $resumenTable->addRow();
+                $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText("Prioridad {$nivel} - {$descripcion}", 'subHeaderStyle');
+                $resumenTable->addCell(5000)->addText("{$cantidad} ({$porcentaje}%)", 'normalStyle');
+            }
+            
+            // Total de archivos adjuntos con información mejorada
+            $resumenTable->addRow();
+            $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText('Total de Archivos Adjuntos Válidos', 'subHeaderStyle');
+            
+            $archivosSizeText = $totalArchivos . ' archivos';
+            if ($totalSizeBytes > 0) {
+                if ($totalSizeBytes < 1024 * 1024) {
+                    $sizeFormatted = round($totalSizeBytes / 1024, 1) . ' KB';
+                } else {
+                    $sizeFormatted = round($totalSizeBytes / (1024 * 1024), 1) . ' MB';
+                }
+                $archivosSizeText .= " ({$sizeFormatted})";
+            }
+            $resumenTable->addCell(5000)->addText($archivosSizeText, 'normalStyle');
+            
+            $section->addTextBreak(2);
+            
+            // 16. Observaciones generales con estilo mejorado
             if (!empty($inspection->general_observations)) {
                 $section->addText('OBSERVACIONES GENERALES', 'headerStyle', 'headerParagraph');
                 $section->addTextBreak(1);
@@ -546,7 +869,7 @@ class ReporteWordResource extends Resource
                 $section->addTextBreak(1);
             }
             
-            // 15. Agregar footer profesional
+            // 17. Agregar footer profesional
             $footer = $section->addFooter();
             $footerTable = $footer->addTable();
             $footerTable->addRow();
