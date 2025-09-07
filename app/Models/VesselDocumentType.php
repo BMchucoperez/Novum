@@ -38,7 +38,7 @@ class VesselDocumentType
     const PLANO_ARRANJO = 'plano_arranjo_geral';
     const PLANO_REDE_CARGA = 'plano_rede_carga_descarga';
     const PLANO_CAPACIDADE = 'plano_capacidade_tanques';
-    const TESTE_OPACIDADE = 'teste_opacidade';
+    const PLANO_CONTINGENCIA = 'plano_contingencia';
     const CERTIFICADO_PNEUMATICO = 'certificado_teste_pneumatico_tanques';
     const CERTIFICADO_REDE = 'certificado_teste_rede_carga_descarga';
     const CERTIFICADO_VALVULA = 'certificado_teste_valvula_pressao_vacuo';
@@ -72,10 +72,9 @@ class VesselDocumentType
     {
         return [
             self::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
-            self::LIVRO_OLEO => 'Livro de oleo',
             self::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
             self::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
-            self::TESTE_OPACIDADE => 'Teste de Opacidade',
+            self::PLANO_CONTINGENCIA => 'Plano de contingência',
             self::CERTIFICADO_PNEUMATICO => 'Certificado de teste pneumático dos tanques de armazenamento de óleo',
             self::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
             self::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo',
