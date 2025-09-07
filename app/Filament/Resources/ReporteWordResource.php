@@ -312,64 +312,246 @@ class ReporteWordResource extends Resource
             // 3. Configurar propiedades del documento para prevenir errores
             $phpWord->getSettings()->setHideGrammaticalErrors(true);
             $phpWord->getSettings()->setHideSpellingErrors(true);
-            $section = $phpWord->addSection();
             
-            // 4. Usar estilos definidos para mejor compatibilidad
-            $titleStyle = ['name' => 'Arial', 'size' => 16, 'bold' => true];
-            $headerStyle = ['name' => 'Arial', 'size' => 14, 'bold' => true];
-            $normalStyle = ['name' => 'Arial', 'size' => 12];
+            // 4. Configurar fuentes por defecto del documento
+            $phpWord->setDefaultFontName('Calibri');
+            $phpWord->setDefaultFontSize(11);
             
-            // Contenido del reporte con estilos apropiados
-            $section->addText('INFORME DE INSPECCIÓN CHECKLIST', $titleStyle);
-            $section->addTextBreak(1);
-            $section->addText('========================================', $normalStyle);
-            $section->addTextBreak(1);
-            $section->addText('INFORMACIÓN GENERAL', $headerStyle);
+            // 5. Definir esquema de colores corporativo
+            $colorScheme = [
+                'primary' => '1F4E79',      // Azul marino corporativo
+                'secondary' => '2E75B6',    // Azul medio
+                'accent' => '5B9BD5',       // Azul claro
+                'text' => '1F1F1F',         // Gris oscuro
+                'lightGray' => 'F2F2F2',    // Gris muy claro
+                'mediumGray' => 'D9D9D9',   // Gris medio
+                'success' => '70AD47',      // Verde
+                'warning' => 'FFC000',      // Amarillo
+                'danger' => 'C5504B'        // Rojo
+            ];
+            
+            // 6. Definir estilos de fuente personalizados
+            $phpWord->addFontStyle('titleStyle', [
+                'name' => 'Calibri',
+                'size' => 20,
+                'bold' => true,
+                'color' => $colorScheme['primary'],
+                'allCaps' => true
+            ]);
+            
+            $phpWord->addFontStyle('headerStyle', [
+                'name' => 'Calibri',
+                'size' => 14,
+                'bold' => true,
+                'color' => $colorScheme['secondary']
+            ]);
+            
+            $phpWord->addFontStyle('subHeaderStyle', [
+                'name' => 'Calibri',
+                'size' => 12,
+                'bold' => true,
+                'color' => $colorScheme['text']
+            ]);
+            
+            $phpWord->addFontStyle('normalStyle', [
+                'name' => 'Calibri',
+                'size' => 11,
+                'color' => $colorScheme['text']
+            ]);
+            
+            $phpWord->addFontStyle('emphasisStyle', [
+                'name' => 'Calibri',
+                'size' => 11,
+                'italic' => true,
+                'color' => $colorScheme['secondary']
+            ]);
+            
+            $phpWord->addFontStyle('whiteStyle', [
+                'name' => 'Calibri',
+                'size' => 11,
+                'bold' => true,
+                'color' => 'FFFFFF'
+            ]);
+            
+            // 7. Definir estilos de párrafo
+            $phpWord->addParagraphStyle('titleParagraph', [
+                'alignment' => 'center',
+                'spaceBefore' => 0,
+                'spaceAfter' => 400,
+                'borderBottomSize' => 18,
+                'borderBottomColor' => $colorScheme['primary']
+            ]);
+            
+            $phpWord->addParagraphStyle('headerParagraph', [
+                'alignment' => 'left',
+                'spaceBefore' => 300,
+                'spaceAfter' => 200
+            ]);
+            
+            $phpWord->addParagraphStyle('normalParagraph', [
+                'alignment' => 'left',
+                'spaceBefore' => 120,
+                'spaceAfter' => 120,
+                'lineHeight' => 1.2
+            ]);
+            
+            // 8. Definir estilos de tabla
+            $phpWord->addTableStyle('infoTable', [
+                'borderSize' => 6,
+                'borderColor' => $colorScheme['mediumGray'],
+                'cellMargin' => 100,
+                'width' => 100 * 50, // 100% width
+                'unit' => 'pct'
+            ], [
+                'bgColor' => $colorScheme['primary']
+            ]);
+            
+            $phpWord->addTableStyle('checklistTable', [
+                'borderSize' => 6,
+                'borderColor' => $colorScheme['mediumGray'],
+                'cellMargin' => 80,
+                'width' => 100 * 50,
+                'unit' => 'pct'
+            ], [
+                'bgColor' => $colorScheme['secondary']
+            ]);
+            
+            // 9. Crear sección con márgenes personalizados
+            $sectionStyle = [
+                'marginTop' => 1440,    // 1 inch
+                'marginBottom' => 1440,
+                'marginLeft' => 1440,
+                'marginRight' => 1440,
+                'headerHeight' => 720,
+                'footerHeight' => 720
+            ];
+            $section = $phpWord->addSection($sectionStyle);
+            
+            // 10. Agregar header profesional
+            $header = $section->addHeader();
+            $headerTable = $header->addTable();
+            $headerTable->addRow();
+            $headerTable->addCell(8000)->addText('SISTEMA DE INSPECCIÓN MARÍTIMA', 'headerStyle');
+            $headerTable->addCell(2000)->addText(date('d/m/Y'), 'normalStyle', ['alignment' => 'right']);
+            
+            // 11. Contenido principal del reporte con diseño profesional
+            $section->addText('INFORME DE INSPECCIÓN CHECKLIST', 'titleStyle', 'titleParagraph');
+            $section->addTextBreak(2);
+            
+            // 12. Tabla de información general
+            $section->addText('INFORMACIÓN GENERAL', 'headerStyle', 'headerParagraph');
             $section->addTextBreak(1);
             
-            // Usar htmlspecialchars para escapar caracteres especiales
-            $section->addText('Propietario: ' . htmlspecialchars($inspection->owner->name, ENT_QUOTES, 'UTF-8'), $normalStyle);
-            $section->addText('Embarcación: ' . htmlspecialchars($inspection->vessel->name, ENT_QUOTES, 'UTF-8'), $normalStyle);
-            $section->addText('Inspector: ' . htmlspecialchars($inspection->inspector_name, ENT_QUOTES, 'UTF-8'), $normalStyle);
-            $section->addText('Fecha: ' . $inspection->inspection_start_date->format('d/m/Y'), $normalStyle);
-            $section->addText('Estado: ' . htmlspecialchars($inspection->overall_status ?? 'N/A', ENT_QUOTES, 'UTF-8'), $normalStyle);
-            $section->addTextBreak(1);
+            $infoTable = $section->addTable('infoTable');
             
-            // Partes del checklist con mejor manejo de caracteres especiales
+            // Fila de encabezado
+            $infoTable->addRow();
+            $infoTable->addCell(3000, ['bgColor' => $colorScheme['primary']])->addText('Campo', 'whiteStyle');
+            $infoTable->addCell(7000, ['bgColor' => $colorScheme['primary']])->addText('Información', 'whiteStyle');
+            
+            // Datos de la inspección
+            $infoData = [
+                'Propietario' => htmlspecialchars($inspection->owner->name, ENT_QUOTES, 'UTF-8'),
+                'Embarcación' => htmlspecialchars($inspection->vessel->name, ENT_QUOTES, 'UTF-8'),
+                'Inspector' => htmlspecialchars($inspection->inspector_name, ENT_QUOTES, 'UTF-8'),
+                'Fecha de Inicio' => $inspection->inspection_start_date->format('d/m/Y'),
+                'Fecha de Fin' => $inspection->inspection_end_date ? $inspection->inspection_end_date->format('d/m/Y') : 'N/A',
+                'Estado General' => htmlspecialchars($inspection->overall_status ?? 'N/A', ENT_QUOTES, 'UTF-8')
+            ];
+            
+            foreach ($infoData as $field => $value) {
+                $infoTable->addRow();
+                $infoTable->addCell(3000, ['bgColor' => $colorScheme['lightGray']])->addText($field, 'subHeaderStyle');
+                $infoTable->addCell(7000)->addText($value, 'normalStyle');
+            }
+            $section->addTextBreak(2);
+            
+            // 13. Partes del checklist con tablas estructuradas
+            $parteTitles = [
+                1 => 'DOCUMENTOS DE BANDERA E PÓLIZAS DE SEGURO',
+                2 => 'DOCUMENTOS DEL SISTEMA DE GESTIÓN DE BORDO', 
+                3 => 'CASCO Y ESTRUCTURAS',
+                4 => 'SISTEMAS DE SEGURIDAD',
+                5 => 'EQUIPOS DE NAVEGACIÓN',
+                6 => 'SISTEMAS ELÉCTRICOS Y MECÁNICOS'
+            ];
+            
             for ($i = 1; $i <= 6; $i++) {
-                $section->addText('PARTE ' . $i, $headerStyle);
-                $section->addText('--------', $normalStyle);
+                $section->addText('PARTE ' . $i . ': ' . $parteTitles[$i], 'headerStyle', 'headerParagraph');
                 $section->addTextBreak(1);
                 
                 $items = $inspection->{"parte_{$i}_items"} ?? [];
                 
                 if (empty($items)) {
-                    $section->addText('Sin items', $normalStyle);
+                    $section->addText('Sin items registrados', 'emphasisStyle', 'normalParagraph');
                 } else {
+                    // Crear tabla para los items del checklist
+                    $checklistTable = $section->addTable('checklistTable');
+                    
+                    // Encabezado de la tabla
+                    $checklistTable->addRow();
+                    $checklistTable->addCell(1000, ['bgColor' => $colorScheme['secondary']])->addText('#', 'whiteStyle');
+                    $checklistTable->addCell(5000, ['bgColor' => $colorScheme['secondary']])->addText('Item', 'whiteStyle');
+                    $checklistTable->addCell(1500, ['bgColor' => $colorScheme['secondary']])->addText('Estado', 'whiteStyle');
+                    $checklistTable->addCell(3500, ['bgColor' => $colorScheme['secondary']])->addText('Comentarios', 'whiteStyle');
+                    
                     foreach ($items as $index => $item) {
                         $itemText = htmlspecialchars($item['item'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
                         $estadoText = htmlspecialchars($item['estado'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
+                        $comentarios = htmlspecialchars($item['comentarios'] ?? '', ENT_QUOTES, 'UTF-8');
                         
-                        $section->addText(($index + 1) . '. ' . $itemText, $normalStyle);
-                        $section->addText('   Estado: ' . $estadoText, $normalStyle);
+                        // Determinar color según el estado
+                        $estadoColor = $colorScheme['mediumGray'];
+                        $estadoFont = 'normalStyle';
                         
-                        if (!empty($item['comentarios'])) {
-                            $comentarios = htmlspecialchars($item['comentarios'], ENT_QUOTES, 'UTF-8');
-                            $section->addText('   Comentarios: ' . $comentarios, $normalStyle);
+                        if (stripos($estadoText, 'aprobado') !== false || stripos($estadoText, 'ok') !== false) {
+                            $estadoColor = $colorScheme['success'];
+                            $estadoFont = 'whiteStyle';
+                        } elseif (stripos($estadoText, 'rechazado') !== false || stripos($estadoText, 'falla') !== false) {
+                            $estadoColor = $colorScheme['danger'];
+                            $estadoFont = 'whiteStyle';
+                        } elseif (stripos($estadoText, 'pendiente') !== false || stripos($estadoText, 'revision') !== false) {
+                            $estadoColor = $colorScheme['warning'];
                         }
-                        $section->addTextBreak(1);
+                        
+                        $checklistTable->addRow();
+                        $checklistTable->addCell(1000)->addText(($index + 1), 'normalStyle');
+                        $checklistTable->addCell(5000)->addText($itemText, 'normalStyle');
+                        $checklistTable->addCell(1500, ['bgColor' => $estadoColor])->addText($estadoText, $estadoFont);
+                        $checklistTable->addCell(3500)->addText($comentarios ?: '-', 'normalStyle');
                     }
                 }
+                $section->addTextBreak(2);
+            }
+            
+            // 14. Observaciones generales con estilo mejorado
+            if (!empty($inspection->general_observations)) {
+                $section->addText('OBSERVACIONES GENERALES', 'headerStyle', 'headerParagraph');
+                $section->addTextBreak(1);
+                
+                // Crear una caja de texto con fondo
+                $observationsTable = $section->addTable([
+                    'borderSize' => 6,
+                    'borderColor' => $colorScheme['mediumGray'],
+                    'cellMargin' => 200,
+                    'width' => 100 * 50,
+                    'unit' => 'pct'
+                ]);
+                
+                $observationsTable->addRow();
+                $cell = $observationsTable->addCell(10000, ['bgColor' => $colorScheme['lightGray']]);
+                $observations = htmlspecialchars($inspection->general_observations, ENT_QUOTES, 'UTF-8');
+                $cell->addText($observations, 'normalStyle', 'normalParagraph');
+                
                 $section->addTextBreak(1);
             }
             
-            // Observaciones generales con escape de caracteres
-            if (!empty($inspection->general_observations)) {
-                $section->addText('OBSERVACIONES GENERALES', $headerStyle);
-                $section->addTextBreak(1);
-                $observations = htmlspecialchars($inspection->general_observations, ENT_QUOTES, 'UTF-8');
-                $section->addText($observations, $normalStyle);
-            }
+            // 15. Agregar footer profesional
+            $footer = $section->addFooter();
+            $footerTable = $footer->addTable();
+            $footerTable->addRow();
+            $footerTable->addCell(5000)->addText('Documento generado automáticamente', 'emphasisStyle');
+            $footerTable->addCell(5000)->addText('Página {PAGE} de {NUMPAGES}', 'emphasisStyle', ['alignment' => 'right']);
             
             // 5. Guardar usando IOFactory con configuración robusta
             try {
