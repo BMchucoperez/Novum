@@ -58,12 +58,10 @@ class ChecklistInspectionResource extends Resource
             VesselDocumentType::APOLICE_SEGURO => 'Apolice de seguro P&I',
             
             // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
-            VesselDocumentType::LIVRO_OLEO => 'Livro de oleo',
             VesselDocumentType::PLANO_SEGURANCA => 'Plano de segurança',
             VesselDocumentType::PLANO_ARRANJO => 'Plano de arranjo geral',
             VesselDocumentType::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
             VesselDocumentType::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
-            VesselDocumentType::TESTE_OPACIDADE => 'Teste de Opacidade',
             VesselDocumentType::CERTIFICADO_PNEUMATICO => 'Certificado de teste pneumático dos tanques de armazenamento de óleo',
             VesselDocumentType::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
             VesselDocumentType::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo ',
