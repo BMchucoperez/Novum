@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\VesselResource\Pages;
 use App\Filament\Resources\VesselResource\RelationManagers;
 use App\Models\Vessel;
+use App\Models\VesselDocumentType;
+use App\Models\VesselDocument;
 use Filament\Forms;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
@@ -12,6 +14,8 @@ use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Group;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -87,7 +91,7 @@ class VesselResource extends Resource
                                     ->columns(2),
 
                                 Section::make('Clasificación')
-                                    ->description('Tipo de servicio y navegación')
+                                    ->description('Tipo de embarcación y navegación')
                                     ->schema([
                                         Forms\Components\Select::make('service_type_id')
                                             ->relationship('serviceType', 'name')
@@ -107,8 +111,8 @@ class VesselResource extends Resource
                                                     ->maxLength(65535)
                                                     ->label('Descripción'),
                                             ])
-                                            ->label('Tipo de Servicio')
-                                            ->helperText('Seleccione el tipo de servicio que presta la embarcación'),
+                                            ->label('Tipo de Embarcación')
+                                            ->helperText('Seleccione el tipo de embarcación'),
 
                                         Forms\Components\Select::make('navigation_type_id')
                                             ->relationship('navigationType', 'name')
@@ -132,11 +136,13 @@ class VesselResource extends Resource
                                 Section::make('Registro')
                                     ->description('Información oficial de registro')
                                     ->schema([
-                                        Forms\Components\TextInput::make('flag_registry')
+                                        Forms\Components\Select::make('flag_registry')
                                             ->required()
-                                            ->maxLength(255)
+                                            ->options([
+                                                'Perú' => 'Perú',
+                                                'Brasil' => 'Brasil',
+                                            ])
                                             ->label('Bandera de Registro')
-                                            ->placeholder('Ej: Peruana')
                                             ->helperText('País de registro de la embarcación'),
 
                                         Forms\Components\TextInput::make('port_registry')
@@ -286,29 +292,56 @@ class VesselResource extends Resource
                                     ]),
                             ]),
 
-                        Tab::make('Documentos y Certificados')
+                        Tab::make('Embarcaciones Asociadas')
+                            ->icon('heroicon-o-link')
+                            ->schema([
+                                Section::make('Asociaciones')
+                                    ->description('Embarcaciones que se incluirán automáticamente en las inspecciones cuando selecciones esta embarcación principal')
+                                    ->schema([
+                                        Forms\Components\Select::make('associated_vessels')
+                                            ->label('Embarcaciones Asociadas')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->options(function ($record) {
+                                                // Excluir la embarcación actual de las opciones
+                                                $query = \App\Models\Vessel::query();
+                                                if ($record) {
+                                                    $query->where('id', '!=', $record->id);
+                                                }
+                                                return $query->pluck('name', 'id');
+                                            })
+                                            ->helperText('Selecciona las embarcaciones que se incluirán automáticamente en las inspecciones. Máximo 2 embarcaciones adicionales.')
+                                            ->maxItems(2)
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if ($record) {
+                                                    $associatedIds = $record->associatedVessels()->pluck('associated_vessel_id')->toArray();
+                                                    $component->state($associatedIds);
+                                                }
+                                            })
+                                            ->dehydrated(false),
+                                    ]),
+                            ]),
+
+                        Tab::make('Documentos y Certificados Obligatorios')
                             ->icon('heroicon-o-document-text')
                             ->schema([
-                                Section::make('Documentos')
-                                    ->description('Documentos importantes de la embarcación')
+                                Section::make('DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO')
+                                    ->description('Documentos obligatorios relacionados con bandeira y pólizas de seguro')
                                     ->schema([
-                                        Forms\Components\FileUpload::make('documents')
-                                            ->label('Documentos')
-                                            ->multiple()
-                                            ->directory('vessel-documents')
-                                            ->visibility('private')
-                                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
-                                            ->helperText('Suba documentos importantes como certificados, permisos, etc.')
-                                            ->columnSpanFull(),
+                                        static::createDocumentUploadGrid('bandeira_apolices')
                                     ]),
 
-                                Section::make('Notas')
-                                    ->description('Información adicional sobre la embarcación')
+                                Section::make('DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO')
+                                    ->description('Documentos del sistema de gestión a bordo')
                                     ->schema([
-                                        Forms\Components\Textarea::make('notes')
-                                            ->label('Notas')
-                                            ->placeholder('Información adicional sobre la embarcación...')
-                                            ->columnSpanFull(),
+                                        static::createDocumentUploadGrid('sistema_gestao')
+                                    ]),
+
+                                Section::make('DOCUMENTOS EXCLUSIVOS POR TIPO DE EMBARCACIÓN')
+                                    ->description('Documentos específicos según el tipo de embarcación')
+                                    ->schema([
+                                        static::createExclusiveDocumentUploadGrid()
                                     ]),
                             ]),
                     ])
@@ -338,12 +371,13 @@ class VesselResource extends Resource
                     ->badge()
                     ->color('success'),
 
-                Tables\Columns\TextColumn::make('navigationType.name')
+                Tables\Columns\TextColumn::make('flag_registry')
                     ->searchable()
                     ->sortable()
-                    ->label('Tipo de Navegación')
-                    ->badge()
-                    ->color('info'),
+                    ->label('Bandera')
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->description(fn (Vessel $record): string => $record->port_registry)
+                    ->icon('heroicon-o-flag'),
 
                 Tables\Columns\TextColumn::make('owner.name')
                     ->searchable()
@@ -359,20 +393,34 @@ class VesselResource extends Resource
                     ->limit(30)
                     ->icon('heroicon-o-user-circle'),
 
+                // Tables\Columns\TextColumn::make('associated_vessels_count')
+                //     ->label('Embarcaciones Asociadas')
+                //     ->state(function (Vessel $record): string {
+                //         $count = $record->associatedVessels()->count();
+                //         if ($count === 0) {
+                //             return 'Ninguna';
+                //         }
+                //         return $count . ' asociada' . ($count > 1 ? 's' : '');
+                //     })
+                //     ->badge()
+                //     ->color(fn (string $state): string => $state === 'Ninguna' ? 'gray' : 'success')
+                //     ->icon('heroicon-o-link'),
+
+                Tables\Columns\TextColumn::make('documents_completeness')
+                    ->label('Documentos')
+                    ->state(function (Vessel $record): string {
+                        return $record->documents()->count() . ' documentos';
+                    })
+                    ->badge()
+                    ->color('primary')
+                    ->icon('heroicon-o-document-text'),
+
                 Tables\Columns\TextColumn::make('construction_year')
                     ->sortable()
                     ->label('Año')
                     ->icon('heroicon-o-calendar'),
 
-                // Columnas adicionales (ocultas por defecto)
-                Tables\Columns\TextColumn::make('flag_registry')
-                    ->searchable()
-                    ->label('Bandera')
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
-                    ->description(fn (Vessel $record): string => $record->port_registry)
-                    ->icon('heroicon-o-flag')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
+                // Columnas adicionales (ocultas por defecto)                
                 Tables\Columns\TextColumn::make('port_registry')
                     ->searchable()
                     ->label('Puerto')
@@ -553,10 +601,10 @@ class VesselResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
+    // public static function getNavigationBadge(): ?string
+    // {
+    //     return static::getModel()::count();
+    // }
 
     public static function getGloballySearchableAttributes(): array
     {
@@ -571,5 +619,257 @@ class VesselResource extends Resource
             'view' => Pages\ViewVessel::route('/{record}'),
             'edit' => Pages\EditVessel::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Crear grilla de documentos para una categoría específica
+     */
+    protected static function createDocumentUploadGrid(string $category): Grid
+    {
+        $documents = $category === 'bandeira_apolices' 
+            ? VesselDocumentType::getBandeiraApolicesDocuments()
+            : VesselDocumentType::getSistemaGestaoDocuments();
+
+        $fields = [];
+        
+        foreach ($documents as $documentType => $documentName) {
+            $fields[] = Forms\Components\FileUpload::make("document_{$documentType}")
+                ->label($documentName)
+                ->disk('local')
+                ->directory(function ($record) use ($category) {
+                    if ($record && $record->id) {
+                        // Embarcación existente
+                        return "vessel-documents/{$record->id}/{$category}";
+                    } else {
+                        // Nueva embarcación - usar directorio temporal
+                        return "vessel-documents/temp/{$category}";
+                    }
+                })
+                ->acceptedFileTypes(['application/pdf', 'image/png'])
+                ->maxSize(10240) // 10MB
+                ->helperText('Solo PDF y PNG. Máximo 10MB.')
+
+                ->afterStateHydrated(function ($component, $record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document && $document->file_path) {
+                            // Para FileUpload, el estado debe ser un array de archivos
+                            $component->state([$document->file_path]);
+                        } else {
+                            // Si no hay documento, estado vacío
+                            $component->state([]);
+                        }
+                    }
+                })
+                ->downloadable()
+                ->openable()
+                ->deletable(true)
+                ->dehydrated(false);
+        }
+        
+        return Grid::make(2)->schema($fields);
+    }
+
+    /**
+     * Manejar la subida de documentos usando el enfoque correcto de Filament
+     */
+    protected static function handleDocumentUpload($file, $vessel, $documentType, $category, $documentName): void
+    {
+        Log::info('handleDocumentUpload called', [
+            'file_type' => gettype($file),
+            'file_class' => is_object($file) ? get_class($file) : 'not_object',
+            'vessel_id' => $vessel ? $vessel->id : 'null',
+            'document_type' => $documentType,
+            'category' => $category,
+            'document_name' => $documentName,
+        ]);
+
+        if (!$file || !$vessel) {
+            Log::warning('handleDocumentUpload: Missing file or vessel', [
+                'has_file' => !empty($file),
+                'has_vessel' => !empty($vessel),
+            ]);
+            return;
+        }
+
+        try {
+            // Eliminar documento existente si hay uno
+            $existingDocument = $vessel->getDocumentByType($documentType);
+            if ($existingDocument) {
+                $existingDocument->delete();
+            }
+
+            $disk = Storage::disk('local');
+            
+            // Si es un TemporaryUploadedFile (objeto de Livewire)
+            if (is_object($file) && method_exists($file, 'store')) {
+                Log::info("Procesando TemporaryUploadedFile: {$file->getClientOriginalName()}");
+                
+                // Generar un nombre único
+                $extension = $file->getClientOriginalExtension();
+                $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
+                $storagePath = "vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
+                
+                // Usar el método store de Livewire
+                $finalPath = $file->storeAs("vessel-documents/{$vessel->id}/{$category}", $newFileName, 'local');
+                
+                $fileSize = $file->getSize();
+                $mimeType = $file->getMimeType();
+                $fileName = $newFileName;
+                
+            } elseif (is_string($file) && file_exists($file)) {
+                // Es una ruta de archivo temporal
+                Log::info("Procesando archivo temporal: {$file}");
+                
+                $fileInfo = pathinfo($file);
+                $extension = strtolower($fileInfo['extension'] ?? 'pdf');
+                
+                // Validar extensión
+                if (!in_array($extension, ['pdf', 'png', 'jpg', 'jpeg'])) {
+                    throw new \Exception("Tipo de archivo no permitido: {$extension}");
+                }
+                
+                $content = file_get_contents($file);
+                if ($content === false) {
+                    throw new \Exception("No se pudo leer el archivo: {$file}");
+                }
+                
+                $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
+                $finalPath = "vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
+                
+                $success = $disk->put($finalPath, $content);
+                if (!$success) {
+                    throw new \Exception("No se pudo guardar el archivo");
+                }
+                
+                $fileSize = strlen($content);
+                $mimeType = match($extension) {
+                    'pdf' => 'application/pdf',
+                    'png' => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    default => 'application/pdf'
+                };
+                $fileName = $newFileName;
+                
+            } else {
+                throw new \Exception("Formato de archivo no reconocido");
+            }
+
+            // Crear registro en base de datos
+            VesselDocument::create([
+                'vessel_id' => $vessel->id,
+                'document_type' => $documentType,
+                'document_category' => $category,
+                'document_name' => $documentName,
+                'file_path' => $finalPath,
+                'file_name' => $fileName,
+                'file_size' => $fileSize,
+                'mime_type' => $mimeType,
+                'uploaded_at' => now(),
+                'is_valid' => true,
+            ]);
+            
+            // Notificar éxito
+            \Filament\Notifications\Notification::make()
+                ->title('Documento subido correctamente')
+                ->body("Se ha subido: {$documentName}")
+                ->success()
+                ->send();
+            
+            Log::info("Documento registrado: {$documentType} para embarcación {$vessel->id}");
+            
+        } catch (\Exception $e) {
+            Log::error("Error procesando documento {$documentType}: " . $e->getMessage());
+            
+            \Filament\Notifications\Notification::make()
+                ->title('Error al subir documento')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Crear grilla de documentos exclusivos por tipo de embarcación
+     */
+    protected static function createExclusiveDocumentUploadGrid(): Grid
+    {
+        $fields = [];
+        
+        // Documentos exclusivos para Barcazas
+        $barcazaDocuments = VesselDocumentType::getBarcazaExclusiveDocuments();
+        if (!empty($barcazaDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Barcazas')
+                ->description('Documentos específicos para embarcaciones tipo Barcaza')
+                ->schema(static::createDocumentFields($barcazaDocuments, 'barcaza_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+
+        // Documentos exclusivos para Empujadores
+        $empujadorDocuments = VesselDocumentType::getEmpujadorExclusiveDocuments();
+        if (!empty($empujadorDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Empujadores')
+                ->description('Documentos específicos para embarcaciones tipo Empujador')
+                ->schema(static::createDocumentFields($empujadorDocuments, 'empujador_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+
+        // Documentos exclusivos para Motochatas
+        $motochataDocuments = VesselDocumentType::getMotochataExclusiveDocuments();
+        if (!empty($motochataDocuments)) {
+            $fields[] = Forms\Components\Section::make('Documentos Exclusivos para Motochatas')
+                ->description('Documentos específicos para embarcaciones tipo Motochata')
+                ->schema(static::createDocumentFields($motochataDocuments, 'motochata_exclusive'))
+                ->collapsible()
+                ->collapsed(false);
+        }
+        
+        return Grid::make(1)->schema($fields);
+    }
+
+    /**
+     * Crear campos de documentos para una categoría específica
+     */
+    protected static function createDocumentFields(array $documents, string $category): array
+    {
+        $fields = [];
+        
+        foreach ($documents as $documentType => $documentName) {
+            $fields[] = Forms\Components\FileUpload::make("document_{$documentType}")
+                ->label($documentName)
+                ->disk('local')
+                ->directory(function ($record) use ($category) {
+                    if ($record && $record->id) {
+                        // Embarcación existente
+                        return "vessel-documents/{$record->id}/{$category}";
+                    } else {
+                        // Nueva embarcación - usar directorio temporal
+                        return "vessel-documents/temp/{$category}";
+                    }
+                })
+                ->acceptedFileTypes(['application/pdf', 'image/png'])
+                ->maxSize(10240) // 10MB
+                ->helperText('Solo PDF y PNG. Máximo 10MB.')
+                ->afterStateHydrated(function ($component, $record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document && $document->file_path) {
+                            // Para FileUpload, el estado debe ser un array de archivos
+                            $component->state([$document->file_path]);
+                        } else {
+                            // Si no hay documento, estado vacío
+                            $component->state([]);
+                        }
+                    }
+                })
+                ->downloadable()
+                ->openable()
+                ->deletable(true)
+                ->dehydrated(true);
+        }
+        
+        return [Grid::make(2)->schema($fields)];
     }
 }

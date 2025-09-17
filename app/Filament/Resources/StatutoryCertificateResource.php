@@ -47,7 +47,7 @@ class StatutoryCertificateResource extends Resource
                             'default' => 1,
                             'sm' => 1,
                             'md' => 2,
-                            'lg' => 4,
+                            'lg' => 3,
                         ])
                             ->schema([
                                 Forms\Components\Select::make('owner_id')
@@ -59,17 +59,16 @@ class StatutoryCertificateResource extends Resource
                                     ->live()
                                     ->afterStateUpdated(function (Forms\Set $set) {
                                         $set('vessel_id', null);
-                                        $set('vessel_2_id', null);
-                                        $set('vessel_3_id', null);
+                                        $set('associated_vessels', []);
                                     })
                                     ->columnSpan([
                                         'default' => 1,
-                                        'md' => 2,
-                                        'lg' => 2,
+                                        'md' => 1,
+                                        'lg' => 1,
                                     ]),
 
                                 Forms\Components\Select::make('vessel_id')
-                                    ->label('Embarcación 1')
+                                    ->label('Embarcación Principal')
                                     ->options(function (Forms\Get $get) {
                                         $ownerId = $get('owner_id');
                                         if (!$ownerId) {
@@ -80,49 +79,39 @@ class StatutoryCertificateResource extends Resource
                                     ->required()
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Primero selecciona un propietario')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 2,
-                                        'lg' => 2,
-                                    ]),
-
-                                Forms\Components\Select::make('vessel_2_id')
-                                    ->label('Embarcación 2 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
+                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                        if ($state) {
+                                            // Obtener embarcaciones asociadas
+                                            $vessel = \App\Models\Vessel::find($state);
+                                            if ($vessel) {
+                                                $associatedVessels = $vessel->getAllAssociatedVessels();
+                                                $associatedIds = $associatedVessels->pluck('id')->toArray();
+                                                $set('associated_vessels', $associatedIds);
+                                            }
+                                        } else {
+                                            $set('associated_vessels', []);
                                         }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
                                     })
-                                    ->searchable()
-                                    ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 1,
                                         'lg' => 1,
                                     ]),
 
-                                Forms\Components\Select::make('vessel_3_id')
-                                    ->label('Embarcación 3 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
-                                        }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
+                                Forms\Components\Select::make('associated_vessels')
+                                    ->label('Embarcaciones Asociadas')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Vessel::pluck('name', 'id')->toArray();
                                     })
                                     ->searchable()
                                     ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
+                                    ->helperText('Embarcaciones asociadas que se incluirán en la inspección. Se cargan automáticamente pero puedes modificarlas.')
                                     ->columnSpan([
                                         'default' => 1,
-                                        'md' => 1,
+                                        'md' => 2,
                                         'lg' => 1,
                                     ]),
 
@@ -148,11 +137,12 @@ class StatutoryCertificateResource extends Resource
 
                                 Forms\Components\TextInput::make('inspector_license')
                                     ->label('Licencia del Inspector')
+                                    ->required()
                                     ->maxLength(255)
                                     ->columnSpan([
                                         'default' => 1,
-                                        'md' => 2,
-                                        'lg' => 2,
+                                        'md' => 1,
+                                        'lg' => 1,
                                     ]),
                             ]),
                     ]),
@@ -208,15 +198,15 @@ class StatutoryCertificateResource extends Resource
                             'lg' => 2,
                         ])
                             ->schema([
-                                Forms\Components\Select::make('overall_status')
-                                    ->label('Estado General')
-                                    ->options(StatutoryCertificate::getOverallStatusOptions())
-                                    ->required()
-                                    ->default('A')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                    ]),
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options(StatutoryCertificate::getOverallStatusOptions())
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //     ]),
 
                                 Forms\Components\Textarea::make('general_observations')
                                     ->label('Observaciones Generales')
@@ -265,6 +255,36 @@ class StatutoryCertificateResource extends Resource
                                 'lg' => 1,
                             ]),
 
+                        Forms\Components\DatePicker::make('refrenda')
+                            ->label('Refrenda')
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\Toggle::make('vencimiento_activo')
+                            ->label('¿Tiene vencimiento?')
+                            ->default(false)
+                            ->inline(false)
+                            ->reactive()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('vencimiento')
+                            ->label('Vencimiento')
+                            ->reactive()
+                            ->disabled(fn (Forms\Get $get) => !$get('vencimiento_activo'))
+                            ->placeholder('Indeterminado')
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
                         Forms\Components\Textarea::make('comentarios')
                             ->label('Comentarios')
                             ->placeholder('Observaciones específicas...')
@@ -295,22 +315,20 @@ class StatutoryCertificateResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('vessel.name')
-                    ->label('Embarcación 1')
+                    ->label('Embarcación Principal')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('vessel2.name')
-                    ->label('Embarcación 2')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('vessel3.name')
-                    ->label('Embarcación 3')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('—')
+                Tables\Columns\TextColumn::make('associated_vessels')
+                    ->label('Embarcaciones Asociadas')
+                    ->formatStateUsing(function ($state) {
+                        if (empty($state) || !is_array($state)) {
+                            return 'Ninguna';
+                        }
+                        $vessels = \App\Models\Vessel::whereIn('id', $state)->pluck('name')->toArray();
+                        return count($vessels) > 0 ? implode(', ', $vessels) : 'Ninguna';
+                    })
+                    ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('inspection_date')
@@ -321,6 +339,11 @@ class StatutoryCertificateResource extends Resource
                 Tables\Columns\TextColumn::make('inspector_name')
                     ->label('Inspector')
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('inspector_license')
+                    ->label('Licencia')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\BadgeColumn::make('overall_status')
                     ->label('Estado')

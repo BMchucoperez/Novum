@@ -57,8 +57,7 @@ class OnboardManagementDocumentResource extends Resource
                                     ->live()
                                     ->afterStateUpdated(function (Forms\Set $set) {
                                         $set('vessel_id', null);
-                                        $set('vessel_2_id', null);
-                                        $set('vessel_3_id', null);
+                                        $set('associated_vessels', []);
                                     })
                                     ->columnSpan([
                                         'default' => 1,
@@ -67,7 +66,7 @@ class OnboardManagementDocumentResource extends Resource
                                     ]),
 
                                 Forms\Components\Select::make('vessel_id')
-                                    ->label('Embarcación 1')
+                                    ->label('Embarcación Principal')
                                     ->options(function (Forms\Get $get) {
                                         $ownerId = $get('owner_id');
                                         if (!$ownerId) {
@@ -78,49 +77,38 @@ class OnboardManagementDocumentResource extends Resource
                                     ->required()
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Primero selecciona un propietario')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 2,
-                                        'lg' => 2,
-                                    ]),
-
-                                Forms\Components\Select::make('vessel_2_id')
-                                    ->label('Embarcación 2 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
+                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                        if ($state) {
+                                            $vessel = \App\Models\Vessel::find($state);
+                                            if ($vessel) {
+                                                $associatedVessels = $vessel->getAllAssociatedVessels();
+                                                $associatedIds = $associatedVessels->pluck('id')->toArray();
+                                                $set('associated_vessels', $associatedIds);
+                                            }
+                                        } else {
+                                            $set('associated_vessels', []);
                                         }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
                                     })
-                                    ->searchable()
-                                    ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 1,
                                         'lg' => 1,
                                     ]),
 
-                                Forms\Components\Select::make('vessel_3_id')
-                                    ->label('Embarcación 3 (Opcional)')
-                                    ->options(function (Forms\Get $get) {
-                                        $ownerId = $get('owner_id');
-                                        if (!$ownerId) {
-                                            return [];
-                                        }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
+                                Forms\Components\Select::make('associated_vessels')
+                                    ->label('Embarcaciones Asociadas')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Vessel::pluck('name', 'id')->toArray();
                                     })
                                     ->searchable()
                                     ->preload()
-                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
-                                    ->helperText('Embarcación adicional (opcional)')
+                                    ->helperText('Embarcaciones asociadas que se incluirán en la inspección. Se cargan automáticamente pero puedes modificarlas.')
                                     ->columnSpan([
                                         'default' => 1,
-                                        'md' => 1,
+                                        'md' => 2,
                                         'lg' => 1,
                                     ]),
 
@@ -152,6 +140,22 @@ class OnboardManagementDocumentResource extends Resource
                                         'md' => 2,
                                         'lg' => 2,
                                     ]),
+
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options([
+                                //         'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
+                                //         'A' => 'A - En trámite (operativo con observaciones menores)',
+                                //         'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
+                                //         'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
+                                //     ])
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //         'lg' => 1,
+                                //     ]),
                             ]),
                     ]),
 
@@ -188,15 +192,15 @@ class OnboardManagementDocumentResource extends Resource
                             'lg' => 2,
                         ])
                             ->schema([
-                                Forms\Components\Select::make('overall_status')
-                                    ->label('Estado General')
-                                    ->options(OnboardManagementDocument::getOverallStatusOptions())
-                                    ->required()
-                                    ->default('A')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                    ]),
+                                // Forms\Components\Select::make('overall_status')
+                                //     ->label('Estado General')
+                                //     ->options(OnboardManagementDocument::getOverallStatusOptions())
+                                //     ->required()
+                                //     ->default('A')
+                                //     ->columnSpan([
+                                //         'default' => 1,
+                                //         'md' => 1,
+                                //     ]),
 
                                 Forms\Components\Textarea::make('general_observations')
                                     ->label('Observaciones Generales')
@@ -239,6 +243,36 @@ class OnboardManagementDocumentResource extends Resource
                             ->label('Estado')
                             ->options(OnboardManagementDocument::getStatusOptions())
                             ->required()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('refrenda')
+                            ->label('Refrenda')
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\Toggle::make('vencimiento_activo')
+                            ->label('¿Tiene vencimiento?')
+                            ->default(false)
+                            ->inline(false)
+                            ->reactive()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 1,
+                                'lg' => 1,
+                            ]),
+
+                        Forms\Components\DatePicker::make('vencimiento')
+                            ->label('Vencimiento')
+                            ->reactive()
+                            ->disabled(fn (Forms\Get $get) => !$get('vencimiento_activo'))
+                            ->placeholder('Indeterminado')
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 1,

@@ -103,10 +103,121 @@ class Vessel extends Model
     }
 
     /**
+     * Get all documents associated with the vessel.
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(VesselDocument::class);
+    }
+
+    /**
      * Get the crew members for the vessel.
      */
     public function crewMembers(): HasMany
     {
         return $this->hasMany(CrewMember::class);
+    }
+
+    /**
+     * Get the vessels associated to this vessel (this vessel is the main one).
+     */
+    public function associatedVessels(): HasMany
+    {
+        return $this->hasMany(VesselAssociation::class, 'main_vessel_id');
+    }
+
+    /**
+     * Get the main vessels where this vessel is associated.
+     */
+    public function mainVessels(): HasMany
+    {
+        return $this->hasMany(VesselAssociation::class, 'associated_vessel_id');
+    }
+
+    /**
+     * Get the inspection schedules for the vessel.
+     */
+    public function inspectionSchedules(): HasMany
+    {
+        return $this->hasMany(InspectionSchedule::class);
+    }
+
+    /**
+     * Get the documents for the vessel.
+     */
+    public function vesselDocuments(): HasMany
+    {
+        return $this->hasMany(VesselDocument::class);
+    }
+
+    /**
+     * Get all associated vessels for this vessel (both directions).
+     */
+    public function getAllAssociatedVessels()
+    {
+        $associated = $this->associatedVessels()->with('associatedVessel')->get()->pluck('associatedVessel');
+        $mains = $this->mainVessels()->with('mainVessel')->get()->pluck('mainVessel');
+        
+        return $associated->merge($mains)->unique('id');
+    }
+
+    /**
+     * Get all vessels that should be included in inspections when this vessel is selected.
+     * This includes the vessel itself plus all associated vessels.
+     */
+    public function getInspectionVessels()
+    {
+        $vessels = collect([$this]);
+        $associated = $this->getAllAssociatedVessels();
+        
+        return $vessels->merge($associated)->unique('id')->take(3); // Máximo 3 embarcaciones
+    }
+
+    /**
+     * Get document by type
+     */
+    public function getDocumentByType(string $documentType): ?VesselDocument
+    {
+        return $this->vesselDocuments()->where('document_type', $documentType)->first();
+    }
+
+    /**
+     * Get document completeness percentage
+     */
+    public function getDocumentCompleteness(): int
+    {
+        $totalRequired = count(VesselDocumentType::getAllDocuments());
+        $uploaded = $this->vesselDocuments()->valid()->count();
+        
+        return $totalRequired > 0 ? round(($uploaded / $totalRequired) * 100) : 0;
+    }
+
+    /**
+     * Get missing documents
+     */
+    public function getMissingDocuments(): array
+    {
+        $allDocuments = VesselDocumentType::getAllDocuments();
+        $uploadedTypes = $this->vesselDocuments()->valid()->pluck('document_type')->toArray();
+        
+        $missingTypes = array_diff(array_keys($allDocuments), $uploadedTypes);
+        
+        return array_intersect_key($allDocuments, array_flip($missingTypes));
+    }
+
+    /**
+     * Check if vessel has all required documents
+     */
+    public function hasRequiredDocuments(): bool
+    {
+        return empty($this->getMissingDocuments());
+    }
+
+    /**
+     * Get documents by category
+     */
+    public function getDocumentsByCategory(string $category)
+    {
+        return $this->vesselDocuments()->byCategory($category)->get();
     }
 }

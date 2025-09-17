@@ -88,4 +88,88 @@
         transition: none !important;
         scale: 1 !important;
     }
+
+    /* ===== SOLUCIÓN PARA ITEMS LARGOS EN CHECKLIST ===== */
+    
+    /* Forzar que los headers de repeater muestren texto completo */
+    .fi-fo-repeater-item-header {
+        min-height: auto !important;
+        height: auto !important;
+        padding: 12px 16px !important;
+    }
+    
+    /* El elemento que contiene el texto del item */
+    .fi-fo-repeater-item-header-label {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        text-overflow: unset !important;
+        overflow: visible !important;
+        max-width: none !important;
+        width: auto !important;
+        line-height: 1.4 !important;
+        display: block !important;
+        padding-right: 40px !important;
+    }
+    
+    /* Asegurar que el span interno también se comporte correctamente */
+    .fi-fo-repeater-item-header-label span {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        text-overflow: unset !important;
+        overflow: visible !important;
+        display: block !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Ajustar el layout del header para acomodar texto largo */
+    .fi-fo-repeater-item-header {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    
+    /* El contenedor del texto debe tomar el espacio disponible */
+    .fi-fo-repeater-item-header-label {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+    
+    /* Los botones de acción deben mantenerse a la derecha */
+    .fi-fo-repeater-item-header-actions {
+        flex-shrink: 0 !important;
+        margin-left: auto !important;
+    }
+    
+    /* Responsive: En pantallas pequeñas */
+    @media (max-width: 768px) {
+        .fi-fo-repeater-item-header {
+            padding: 10px 12px !important;
+        }
+        
+        .fi-fo-repeater-item-header-label {
+            font-size: 14px !important;
+            padding-right: 35px !important;
+        }
+    }
+    
+    /* Mejorar la legibilidad con mejor tipografía */
+    .fi-fo-repeater-item-header-label {
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #374151 !important;
+    }
+    
+    /* Asegurar que el contenedor padre no limite la altura */
+    .fi-fo-repeater-item {
+        overflow: visible !important;
+    }
+    
+    /* Forzar que todos los elementos de texto en el header se muestren completos */
+    .fi-fo-repeater-item-header * {
+        text-overflow: unset !important;
+        overflow: visible !important;
+        white-space: normal !important;
+    }
 </style>

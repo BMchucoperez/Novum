@@ -19,6 +19,7 @@ class StatutoryCertificate extends Model
         'vessel_id',
         'vessel_2_id',
         'vessel_3_id',
+        'associated_vessels',
         'owner_id',
         'inspection_type',
         'inspection_date',
@@ -41,6 +42,7 @@ class StatutoryCertificate extends Model
      */
     protected $casts = [
         'inspection_date' => 'date',
+        'associated_vessels' => 'array',
         'parte_1_items' => 'array',
         'parte_2_items' => 'array',
         'parte_3_items' => 'array',
@@ -153,5 +155,41 @@ class StatutoryCertificate extends Model
             'N' => 'N - No Conforme con Reparaciones',
             'R' => 'R - No Conforme Crítico',
         ];
+    }
+
+    /**
+     * Calcula el estado general automáticamente según los estados de todos los ítems de todas las partes.
+     */
+    public function calculateOverallStatus(): string
+    {
+        $allEstados = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $items = $this->getAttribute('parte_' . $i . '_items') ?? [];
+            foreach ($items as $item) {
+                if (!empty($item['estado'])) {
+                    $allEstados[] = $item['estado'];
+                }
+            }
+        }
+        if (empty($allEstados)) {
+            return 'A'; // Por defecto si no hay estados
+        }
+        if (in_array('R', $allEstados, true)) {
+            return 'R';
+        }
+        if (in_array('N', $allEstados, true)) {
+            return 'N';
+        }
+        if (in_array('A', $allEstados, true)) {
+            return 'A';
+        }
+        return 'V';
+    }
+
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            $model->overall_status = $model->calculateOverallStatus();
+        });
     }
 }
