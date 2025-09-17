@@ -13,12 +13,13 @@ class DocumentController extends Controller
     {
         $document = VesselDocument::findOrFail($id);
         
-        // Verificar si el archivo existe
-        if (!file_exists(storage_path('app/private/' . $document->file_path))) {
+        // Verificar si el archivo existe en el storage
+        if (!Storage::disk('local')->exists($document->file_path)) {
             abort(404);
         }
         
-        return response()->download(storage_path('app/private/' . $document->file_path))->deleteFileAfterSend(false);
+        // Descargar el archivo usando el Storage facade
+        return Storage::disk('local')->download($document->file_path, $document->file_name);
     }
     
     public function downloadReporteWord($id)

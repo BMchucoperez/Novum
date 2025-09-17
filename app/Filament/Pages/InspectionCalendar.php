@@ -60,9 +60,16 @@ class InspectionCalendar extends Page
         \Log::info("Buscando inspecciones entre {$startDate} y {$endDate}");
 
         // Obtener inspecciones para el mes
-        $inspections = InspectionSchedule::whereBetween('start_datetime', [$startDate, $endDate])
-            ->with('vessel')
-            ->get();
+        $inspectionQuery = InspectionSchedule::whereBetween('start_datetime', [$startDate, $endDate])
+            ->with('vessel');
+
+        // Si el usuario tiene el rol "Armador", solo mostrar inspecciones de embarcaciones asignadas a él
+        if (auth()->check() && auth()->user()->hasRole('Armador')) {
+            $assignedVesselIds = auth()->user()->vessels()->pluck('id');
+            $inspectionQuery->whereIn('vessel_id', $assignedVesselIds);
+        }
+
+        $inspections = $inspectionQuery->get();
 
         // Log del número de inspecciones encontradas
         \Log::info("Inspecciones encontradas: " . $inspections->count());

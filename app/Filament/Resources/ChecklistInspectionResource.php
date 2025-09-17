@@ -20,6 +20,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class ChecklistInspectionResource extends Resource
 {
@@ -97,6 +98,28 @@ class ChecklistInspectionResource extends Resource
             ->toArray();
     }
 
+    /**
+     * Get the Eloquent query for the resource table
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        // Check if the current user has the "Armador" role
+        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+            // For Armador users, only show inspections for barcazas associated with their user account
+            $userId = auth()->id();
+            
+            // Get vessel IDs assigned to this user
+            $userVesselIds = Vessel::where('user_id', $userId)->pluck('id')->toArray();
+            
+            // Filter to only include inspections for these vessels
+            $query->whereIn('vessel_id', $userVesselIds);
+        }
+
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -138,7 +161,16 @@ class ChecklistInspectionResource extends Resource
                                         if (!$ownerId) {
                                             return [];
                                         }
-                                        return Vessel::where('owner_id', $ownerId)->pluck('name', 'id');
+                                        
+                                        // For Armador users, only show vessels assigned to their user account
+                                        $query = Vessel::where('owner_id', $ownerId);
+                                        
+                                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                                            $userId = auth()->id();
+                                            $query->where('user_id', $userId);
+                                        }
+                                        
+                                        return $query->pluck('name', 'id');
                                     })
                                     ->required()
                                     ->searchable()
@@ -749,7 +781,17 @@ class ChecklistInspectionResource extends Resource
 
                 Tables\Filters\SelectFilter::make('vessel_id')
                     ->label('Embarcación')
-                    ->options(Vessel::all()->pluck('name', 'id'))
+                    ->options(function () {
+                        // For Armador users, only show vessels assigned to their user account
+                        $query = Vessel::query();
+                        
+                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                            $userId = auth()->id();
+                            $query->where('user_id', $userId);
+                        }
+                        
+                        return $query->pluck('name', 'id');
+                    })
                     ->searchable(),
 
                 Tables\Filters\SelectFilter::make('overall_status')
@@ -811,10 +853,10 @@ class ChecklistInspectionResource extends Resource
         return true; // Allow delete for all other roles
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
+    // public static function getNavigationBadge(): ?string
+    // {
+    //     return static::getModel()::count();
+    // }
 
     public static function getPages(): array
     {

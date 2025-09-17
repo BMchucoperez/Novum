@@ -103,6 +103,14 @@ class Vessel extends Model
     }
 
     /**
+     * Get all documents associated with the vessel.
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(VesselDocument::class);
+    }
+
+    /**
      * Get the crew members for the vessel.
      */
     public function crewMembers(): HasMany

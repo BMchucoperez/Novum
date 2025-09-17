@@ -91,7 +91,7 @@ class VesselResource extends Resource
                                     ->columns(2),
 
                                 Section::make('Clasificación')
-                                    ->description('Tipo de servicio y navegación')
+                                    ->description('Tipo de embarcación y navegación')
                                     ->schema([
                                         Forms\Components\Select::make('service_type_id')
                                             ->relationship('serviceType', 'name')
@@ -111,8 +111,8 @@ class VesselResource extends Resource
                                                     ->maxLength(65535)
                                                     ->label('Descripción'),
                                             ])
-                                            ->label('Tipo de Servicio')
-                                            ->helperText('Seleccione el tipo de servicio que presta la embarcación'),
+                                            ->label('Tipo de Embarcación')
+                                            ->helperText('Seleccione el tipo de embarcación'),
 
                                         Forms\Components\Select::make('navigation_type_id')
                                             ->relationship('navigationType', 'name')
@@ -136,11 +136,13 @@ class VesselResource extends Resource
                                 Section::make('Registro')
                                     ->description('Información oficial de registro')
                                     ->schema([
-                                        Forms\Components\TextInput::make('flag_registry')
+                                        Forms\Components\Select::make('flag_registry')
                                             ->required()
-                                            ->maxLength(255)
+                                            ->options([
+                                                'Perú' => 'Perú',
+                                                'Brasil' => 'Brasil',
+                                            ])
                                             ->label('Bandera de Registro')
-                                            ->placeholder('Ej: Peruana')
                                             ->helperText('País de registro de la embarcación'),
 
                                         Forms\Components\TextInput::make('port_registry')
@@ -369,12 +371,13 @@ class VesselResource extends Resource
                     ->badge()
                     ->color('success'),
 
-                Tables\Columns\TextColumn::make('navigationType.name')
+                Tables\Columns\TextColumn::make('flag_registry')
                     ->searchable()
                     ->sortable()
-                    ->label('Tipo de Navegación')
-                    ->badge()
-                    ->color('info'),
+                    ->label('Bandera')
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->description(fn (Vessel $record): string => $record->port_registry)
+                    ->icon('heroicon-o-flag'),
 
                 Tables\Columns\TextColumn::make('owner.name')
                     ->searchable()
@@ -390,33 +393,26 @@ class VesselResource extends Resource
                     ->limit(30)
                     ->icon('heroicon-o-user-circle'),
 
-                Tables\Columns\TextColumn::make('associated_vessels_count')
-                    ->label('Embarcaciones Asociadas')
-                    ->state(function (Vessel $record): string {
-                        $count = $record->associatedVessels()->count();
-                        if ($count === 0) {
-                            return 'Ninguna';
-                        }
-                        return $count . ' asociada' . ($count > 1 ? 's' : '');
-                    })
-                    ->badge()
-                    ->color(fn (string $state): string => $state === 'Ninguna' ? 'gray' : 'success')
-                    ->icon('heroicon-o-link'),
+                // Tables\Columns\TextColumn::make('associated_vessels_count')
+                //     ->label('Embarcaciones Asociadas')
+                //     ->state(function (Vessel $record): string {
+                //         $count = $record->associatedVessels()->count();
+                //         if ($count === 0) {
+                //             return 'Ninguna';
+                //         }
+                //         return $count . ' asociada' . ($count > 1 ? 's' : '');
+                //     })
+                //     ->badge()
+                //     ->color(fn (string $state): string => $state === 'Ninguna' ? 'gray' : 'success')
+                //     ->icon('heroicon-o-link'),
 
                 Tables\Columns\TextColumn::make('documents_completeness')
                     ->label('Documentos')
                     ->state(function (Vessel $record): string {
-                        $completeness = $record->getDocumentCompleteness();
-                        $missing = count($record->getMissingDocuments());
-                        return $missing === 0 ? 'Completo' : "{$completeness}% ({$missing} faltantes)";
+                        return $record->documents()->count() . ' documentos';
                     })
                     ->badge()
-                    ->color(function (Vessel $record): string {
-                        $missing = count($record->getMissingDocuments());
-                        if ($missing === 0) return 'success';
-                        if ($missing <= 5) return 'warning';
-                        return 'danger';
-                    })
+                    ->color('primary')
                     ->icon('heroicon-o-document-text'),
 
                 Tables\Columns\TextColumn::make('construction_year')
@@ -424,15 +420,7 @@ class VesselResource extends Resource
                     ->label('Año')
                     ->icon('heroicon-o-calendar'),
 
-                // Columnas adicionales (ocultas por defecto)
-                Tables\Columns\TextColumn::make('flag_registry')
-                    ->searchable()
-                    ->label('Bandera')
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
-                    ->description(fn (Vessel $record): string => $record->port_registry)
-                    ->icon('heroicon-o-flag')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
+                // Columnas adicionales (ocultas por defecto)                
                 Tables\Columns\TextColumn::make('port_registry')
                     ->searchable()
                     ->label('Puerto')
@@ -613,10 +601,10 @@ class VesselResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
+    // public static function getNavigationBadge(): ?string
+    // {
+    //     return static::getModel()::count();
+    // }
 
     public static function getGloballySearchableAttributes(): array
     {
@@ -660,15 +648,7 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-                ->afterStateUpdated(function ($state, $record, $component) use ($documentType, $category, $documentName) {
-                    if ($state && $record) {
-                        // El estado puede ser un array o un solo archivo
-                        $file = is_array($state) ? (count($state) > 0 ? $state[0] : null) : $state;
-                        if ($file) {
-                            static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
-                        }
-                    }
-                })
+
                 ->afterStateHydrated(function ($component, $record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
@@ -695,7 +675,20 @@ class VesselResource extends Resource
      */
     protected static function handleDocumentUpload($file, $vessel, $documentType, $category, $documentName): void
     {
+        Log::info('handleDocumentUpload called', [
+            'file_type' => gettype($file),
+            'file_class' => is_object($file) ? get_class($file) : 'not_object',
+            'vessel_id' => $vessel ? $vessel->id : 'null',
+            'document_type' => $documentType,
+            'category' => $category,
+            'document_name' => $documentName,
+        ]);
+
         if (!$file || !$vessel) {
+            Log::warning('handleDocumentUpload: Missing file or vessel', [
+                'has_file' => !empty($file),
+                'has_vessel' => !empty($vessel),
+            ]);
             return;
         }
 
@@ -859,15 +852,6 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-                ->afterStateUpdated(function ($state, $record, $component) use ($documentType, $category, $documentName) {
-                    if ($state && $record) {
-                        // El estado puede ser un array o un solo archivo
-                        $file = is_array($state) ? (count($state) > 0 ? $state[0] : null) : $state;
-                        if ($file) {
-                            static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
-                        }
-                    }
-                })
                 ->afterStateHydrated(function ($component, $record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
@@ -883,7 +867,7 @@ class VesselResource extends Resource
                 ->downloadable()
                 ->openable()
                 ->deletable(true)
-                ->dehydrated(false);
+                ->dehydrated(true);
         }
         
         return [Grid::make(2)->schema($fields)];

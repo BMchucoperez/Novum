@@ -37,6 +37,23 @@ class ReporteWordResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    /**
+     * Filtrar consultas según el rol del usuario
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        
+        // Si el usuario tiene el rol "Armador", solo mostrar reportes de sus embarcaciones asignadas
+        if (Auth::user() && Auth::user()->hasRole('Armador')) {
+            $query->whereHas('checklistInspection.vessel', function (Builder $query) {
+                $query->where('user_id', Auth::id());
+            });
+        }
+        
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -44,8 +61,16 @@ class ReporteWordResource extends Resource
                 Forms\Components\Select::make('checklist_inspection_id')
                     ->label('Inspección Checklist')
                     ->options(function () {
-                        return ChecklistInspection::with(['owner', 'vessel'])
-                            ->get()
+                        $query = ChecklistInspection::with(['owner', 'vessel']);
+                        
+                        // Si el usuario tiene el rol "Armador", solo mostrar inspecciones de sus embarcaciones asignadas
+                        if (Auth::user() && Auth::user()->hasRole('Armador')) {
+                            $query->whereHas('vessel', function (Builder $query) {
+                                $query->where('user_id', Auth::id());
+                            });
+                        }
+                        
+                        return $query->get()
                             ->mapWithKeys(function ($inspection) {
                                 return [
                                     $inspection->id => $inspection->owner->name . ' - ' . $inspection->vessel->name . ' (' . $inspection->inspection_start_date->format('d/m/Y') . ')'
