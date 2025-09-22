@@ -6,6 +6,8 @@ use App\Filament\Resources\InspectionScheduleResource\Pages;
 use App\Filament\Resources\InspectionScheduleResource\RelationManagers;
 use App\Models\InspectionSchedule;
 use App\Models\Vessel;
+use App\Models\Owner;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -45,20 +47,86 @@ class InspectionScheduleResource extends Resource
                             'lg' => 3,
                         ])
                         ->schema([
-                            Forms\Components\TextInput::make('title')
-                                ->required()
-                                ->maxLength(255)
-                                ->label('Título')
-                                ->columnSpan([
-                                    'md' => 2,
-                                ]),
-
-                            Forms\Components\Select::make('vessel_id')
-                                ->relationship('vessel', 'name')
+                            Forms\Components\Select::make('owner_id')
+                                ->label('🏢 Propietario')
+                                ->options(Owner::all()->pluck('name', 'id'))
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->label('Embarcación'),
+                                ->live()
+                                ->prefixIcon('heroicon-o-building-office')
+                                ->placeholder('Seleccione el propietario...')
+                                ->afterStateUpdated(function (Forms\Set $set) {
+                                    $set('vessel_id', null);
+                                    $set('title', null); // Limpiar título cuando cambie propietario
+                                })
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'md' => 1,
+                                    'lg' => 1,
+                                ]),
+
+                            Forms\Components\Select::make('vessel_id')
+                                ->label('🚢 Embarcación')
+                                ->options(function (Forms\Get $get) {
+                                    $ownerId = $get('owner_id');
+                                    if (!$ownerId) {
+                                        return [];
+                                    }
+                                    
+                                    $query = Vessel::where('owner_id', $ownerId);
+                                    
+                                    // For Armador users, only show vessels assigned to their user account
+                                    if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                                        $userId = auth()->id();
+                                        $query->where('user_id', $userId);
+                                    }
+                                    
+                                    return $query->pluck('name', 'id');
+                                })
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->prefixIcon('heroicon-o-rectangle-stack')
+                                ->placeholder('Seleccione la embarcación...')
+                                ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, $state) {
+                                    if (!$state) {
+                                        $set('title', null);
+                                        return;
+                                    }
+                                    
+                                    // Auto-generar título basado en propietario y embarcación
+                                    $ownerId = $get('owner_id');
+                                    if ($ownerId) {
+                                        $owner = Owner::find($ownerId);
+                                        $vessel = Vessel::find($state);
+                                        
+                                        if ($owner && $vessel) {
+                                            $title = "Inspección - {$owner->name} - {$vessel->name}";
+                                            $set('title', $title);
+                                        }
+                                    }
+                                })
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'md' => 1,
+                                    'lg' => 1,
+                                ]),
+
+                            Forms\Components\TextInput::make('title')
+                                ->label('🏷️ Título de la Inspección')
+                                ->required()
+                                ->maxLength(255)
+                                ->prefixIcon('heroicon-o-tag')
+                                ->placeholder('Se generará automáticamente...')
+                                ->helperText('El título se genera automáticamente al seleccionar propietario y embarcación')
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'md' => 1,
+                                    'lg' => 1,
+                                ]),
 
                             Forms\Components\DateTimePicker::make('start_datetime')
                                 ->required()
@@ -70,10 +138,19 @@ class InspectionScheduleResource extends Resource
                                 ->label('Fecha y Hora de Finalización')
                                 ->seconds(false),
 
-                            Forms\Components\TextInput::make('inspector_name')
+                            Forms\Components\Select::make('inspector_name')
+                                ->label('👷 Inspector Asignado')
+                                ->options(function () {
+                                    return User::role('Inspector')
+                                        ->orderBy('name')
+                                        ->pluck('name', 'name');
+                                })
                                 ->required()
-                                ->maxLength(255)
-                                ->label('Nombre del Inspector'),
+                                ->searchable()
+                                ->preload()
+                                ->prefixIcon('heroicon-o-user')
+                                ->placeholder('Seleccione el inspector...')
+                                ->helperText('Solo se muestran usuarios con rol "Inspector"'),
 
                             Forms\Components\TextInput::make('location')
                                 ->maxLength(255)
@@ -101,6 +178,11 @@ class InspectionScheduleResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->label('Título'),
+
+                Tables\Columns\TextColumn::make('owner.name')
+                    ->searchable()
+                    ->sortable()
+                    ->label('Propietario'),
 
                 Tables\Columns\TextColumn::make('vessel.name')
                     ->searchable()
@@ -133,11 +215,72 @@ class InspectionScheduleResource extends Resource
                     ->label('Estado'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('vessel')
-                    ->relationship('vessel', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->label('Embarcación'),
+                Tables\Filters\Filter::make('owner_vessel_filter')
+                    ->form([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('owner_id')
+                                    ->label('Propietario')
+                                    ->options(Owner::all()->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('vessel_id', null);
+                                    }),
+                                    
+                                Forms\Components\Select::make('vessel_id')
+                                    ->label('Embarcación')
+                                    ->options(function (Forms\Get $get) {
+                                        $ownerId = $get('owner_id');
+                                        
+                                        $query = Vessel::query();
+                                        
+                                        // Filtrar por propietario si está seleccionado
+                                        if ($ownerId) {
+                                            $query->where('owner_id', $ownerId);
+                                        }
+                                        
+                                        // For Armador users, only show vessels assigned to their user account
+                                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                                            $userId = auth()->id();
+                                            $query->where('user_id', $userId);
+                                        }
+                                        
+                                        return $query->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
+                                    ->helperText('Primero seleccione un propietario'),
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['owner_id'],
+                                fn (Builder $query, $ownerId): Builder => $query->where('owner_id', $ownerId),
+                            )
+                            ->when(
+                                $data['vessel_id'],
+                                fn (Builder $query, $vesselId): Builder => $query->where('vessel_id', $vesselId),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        
+                        if ($data['owner_id'] ?? null) {
+                            $owner = Owner::find($data['owner_id']);
+                            $indicators['owner_id'] = 'Propietario: ' . $owner?->name;
+                        }
+                        
+                        if ($data['vessel_id'] ?? null) {
+                            $vessel = Vessel::find($data['vessel_id']);
+                            $indicators['vessel_id'] = 'Embarcación: ' . $vessel?->name;
+                        }
+                        
+                        return $indicators;
+                    }),
 
                 Tables\Filters\SelectFilter::make('status')
                     ->options(InspectionSchedule::getStatusOptions())

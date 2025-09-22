@@ -24,6 +24,7 @@ class InspectionSchedule extends Model
         'inspector_name',
         'status',
         'vessel_id',
+        'owner_id',
         'statutory_certificate_id',
     ];
 
@@ -43,6 +44,14 @@ class InspectionSchedule extends Model
     public function vessel(): BelongsTo
     {
         return $this->belongsTo(Vessel::class);
+    }
+
+    /**
+     * Get the owner that owns the inspection schedule.
+     */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(Owner::class);
     }
 
     /**

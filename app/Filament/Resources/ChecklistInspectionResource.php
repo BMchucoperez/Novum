@@ -6,6 +6,7 @@ use App\Filament\Resources\ChecklistInspectionResource\Pages;
 use App\Models\ChecklistInspection;
 use App\Models\Vessel;
 use App\Models\Owner;
+use App\Models\User;
 use App\Models\VesselDocument;
 use App\Models\VesselDocumentType;
 use Illuminate\Support\Facades\Storage;
@@ -238,12 +239,18 @@ class ChecklistInspectionResource extends Resource
                                         'lg' => 1,
                                     ]),
 
-                                Forms\Components\TextInput::make('inspector_name')
-                                    ->label('👷 Nombre del Inspector')
+                                Forms\Components\Select::make('inspector_name')
+                                    ->label('👷 Inspector Asignado')
+                                    ->options(function () {
+                                        return User::role('Inspector')
+                                            ->orderBy('name')
+                                            ->pluck('name', 'name');
+                                    })
                                     ->required()
-                                    ->maxLength(255)
+                                    ->searchable()
+                                    ->preload()
                                     ->prefixIcon('heroicon-o-user')
-                                    ->placeholder('Nombre completo del inspector...')
+                                    ->placeholder('Seleccione el inspector...')
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 1,
@@ -774,25 +781,72 @@ class ChecklistInspectionResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('owner_id')
-                    ->label('Propietario')
-                    ->options(Owner::all()->pluck('name', 'id'))
-                    ->searchable(),
-
-                Tables\Filters\SelectFilter::make('vessel_id')
-                    ->label('Embarcación')
-                    ->options(function () {
-                        // For Armador users, only show vessels assigned to their user account
-                        $query = Vessel::query();
+                Tables\Filters\Filter::make('owner_vessel_filter')
+                    ->form([
+                        Forms\Components\Grid::make(1)
+                            ->schema([
+                                Forms\Components\Select::make('owner_id')
+                                    ->label('Propietario')
+                                    ->options(Owner::all()->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('vessel_id', null);
+                                    }),
+                                    
+                                Forms\Components\Select::make('vessel_id')
+                                    ->label('Embarcación')
+                                    ->options(function (Forms\Get $get) {
+                                        $ownerId = $get('owner_id');
+                                        
+                                        $query = Vessel::query();
+                                        
+                                        // Filtrar por propietario si está seleccionado
+                                        if ($ownerId) {
+                                            $query->where('owner_id', $ownerId);
+                                        }
+                                        
+                                        // For Armador users, only show vessels assigned to their user account
+                                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                                            $userId = auth()->id();
+                                            $query->where('user_id', $userId);
+                                        }
+                                        
+                                        return $query->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
+                                    ->helperText('Primero seleccione un propietario'),
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['owner_id'],
+                                fn (Builder $query, $ownerId): Builder => $query->where('owner_id', $ownerId),
+                            )
+                            ->when(
+                                $data['vessel_id'],
+                                fn (Builder $query, $vesselId): Builder => $query->where('vessel_id', $vesselId),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
                         
-                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
-                            $userId = auth()->id();
-                            $query->where('user_id', $userId);
+                        if ($data['owner_id'] ?? null) {
+                            $owner = Owner::find($data['owner_id']);
+                            $indicators['owner_id'] = 'Propietario: ' . $owner?->name;
                         }
                         
-                        return $query->pluck('name', 'id');
-                    })
-                    ->searchable(),
+                        if ($data['vessel_id'] ?? null) {
+                            $vessel = Vessel::find($data['vessel_id']);
+                            $indicators['vessel_id'] = 'Embarcación: ' . $vessel?->name;
+                        }
+                        
+                        return $indicators;
+                    }),
 
                 Tables\Filters\SelectFilter::make('overall_status')
                     ->label('Estado')

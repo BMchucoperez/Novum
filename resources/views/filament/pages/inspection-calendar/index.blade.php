@@ -28,7 +28,7 @@
 
             <div class="grid grid-cols-7 gap-px bg-gray-200">
                 @for($i = 0; $i < $firstDayOfMonth; $i++)
-                    <div class="p-2 h-32 bg-white"></div>
+                    <div class="p-2 h-40 bg-white"></div>
                 @endfor
 
                 @for($day = 1; $day <= $daysInMonth; $day++)
@@ -38,16 +38,26 @@
                         $dayInspections = $inspections->filter(fn($inspection) => \Carbon\Carbon::parse($inspection['start'])->isSameDay($date));
                     @endphp
 
-                    <div class="p-2 h-32 bg-white flex flex-col {{ $isToday ? 'bg-blue-50 border-2 border-blue-300' : '' }}">
+                    <div class="p-2 h-40 bg-white flex flex-col {{ $isToday ? 'bg-blue-50 border-2 border-blue-300' : '' }}">
                         <div class="font-semibold text-gray-800 {{ $isToday ? 'text-blue-600' : '' }}">
                             {{ $day }}
                         </div>
                         <div class="mt-1 space-y-1 overflow-y-auto flex-grow">
                             @forelse($dayInspections as $inspection)
-                                <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-90 transition-opacity shadow-sm border border-white" {!! $inspection['status_color'] !!}
-                                     title="{{ $inspection['title'] }} - {{ $inspection['vessel_name'] }} ({{ $inspection['status_label'] }})">
+                                <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-90 hover:scale-105 transition-all duration-200 shadow-sm border border-white" {!! $inspection['status_color'] !!}
+                                     title="{{ $inspection['title'] }} - {{ $inspection['vessel_name'] }} ({{ $inspection['status_label'] }}) - Clic para ver detalles"
+                                     wire:click="showInspectionDetails({{ $inspection['id'] }})">
                                     <div class="font-medium truncate">{{ $inspection['title'] }}</div>
                                     <div class="truncate opacity-90">{{ $inspection['vessel_name'] }}</div>
+                                    <div class="text-xs opacity-75 mt-1">
+                                        <span class="inline-flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                            Ver detalles
+                                        </span>
+                                    </div>
                                 </div>
                             @empty
                                 @if($isToday)

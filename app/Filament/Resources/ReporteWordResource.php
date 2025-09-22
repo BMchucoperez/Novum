@@ -221,42 +221,105 @@ class ReporteWordResource extends Resource
                     }),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('owner')
-                    ->relationship('checklistInspection.owner', 'name')
-                    ->label('Propietario'),
-
-                Tables\Filters\SelectFilter::make('vessel')
-                    ->relationship('checklistInspection.vessel', 'name')
-                    ->label('Embarcación'),
-            ])
-            ->headerActions([
-                Tables\Actions\Action::make('cleanup')
-                    ->label('Limpiar Archivos Huérfanos')
-                    ->icon('heroicon-o-trash')
-                    ->color('warning')
-                    ->action(function () {
-                        $cleaned = 0;
-                        $reports = ReporteWord::all();
+                Tables\Filters\Filter::make('owner_vessel_filter')
+                    ->form([
+                        Forms\Components\Grid::make(1)
+                            ->schema([
+                                Forms\Components\Select::make('owner_id')
+                                    ->label('Propietario')
+                                    ->options(Owner::all()->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('vessel_id', null);
+                                    }),
+                                    
+                                Forms\Components\Select::make('vessel_id')
+                                    ->label('Embarcación')
+                                    ->options(function (Forms\Get $get) {
+                                        $ownerId = $get('owner_id');
+                                        
+                                        $query = Vessel::query();
+                                        
+                                        // Filtrar por propietario si está seleccionado
+                                        if ($ownerId) {
+                                            $query->where('owner_id', $ownerId);
+                                        }
+                                        
+                                        // For Armador users, only show vessels assigned to their user account
+                                        if (auth()->user() && auth()->user()->hasRole('Armador')) {
+                                            $userId = auth()->id();
+                                            $query->where('user_id', $userId);
+                                        }
+                                        
+                                        return $query->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->disabled(fn (Forms\Get $get): bool => !$get('owner_id'))
+                                    ->helperText('Primero seleccione un propietario'),
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['owner_id'],
+                                fn (Builder $query, $ownerId): Builder => $query->whereHas('checklistInspection', function (Builder $q) use ($ownerId) {
+                                    $q->where('owner_id', $ownerId);
+                                }),
+                            )
+                            ->when(
+                                $data['vessel_id'],
+                                fn (Builder $query, $vesselId): Builder => $query->whereHas('checklistInspection', function (Builder $q) use ($vesselId) {
+                                    $q->where('vessel_id', $vesselId);
+                                }),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
                         
-                        foreach ($reports as $report) {
-                            $fullPath = storage_path('app/private/' . $report->report_path);
-                            if (!file_exists($fullPath)) {
-                                $report->delete();
-                                $cleaned++;
-                            }
+                        if ($data['owner_id'] ?? null) {
+                            $owner = Owner::find($data['owner_id']);
+                            $indicators['owner_id'] = 'Propietario: ' . $owner?->name;
                         }
                         
-                        Notification::make()
-                            ->success()
-                            ->title('Limpieza completada')
-                            ->body("Se eliminaron {$cleaned} registros sin archivo.")
-                            ->send();
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Limpiar registros sin archivo')
-                    ->modalDescription('¿Está seguro de que desea eliminar los registros de reportes cuyos archivos ya no existen?')
-                    ->modalSubmitActionLabel('Limpiar'),
+                        if ($data['vessel_id'] ?? null) {
+                            $vessel = Vessel::find($data['vessel_id']);
+                            $indicators['vessel_id'] = 'Embarcación: ' . $vessel?->name;
+                        }
+                        
+                        return $indicators;
+                    }),
             ])
+            // ->headerActions([
+            //     Tables\Actions\Action::make('cleanup')
+            //         ->label('Limpiar Archivos Huérfanos')
+            //         ->icon('heroicon-o-trash')
+            //         ->color('warning')
+            //         ->action(function () {
+            //             $cleaned = 0;
+            //             $reports = ReporteWord::all();
+                        
+            //             foreach ($reports as $report) {
+            //                 $fullPath = storage_path('app/private/' . $report->report_path);
+            //                 if (!file_exists($fullPath)) {
+            //                     $report->delete();
+            //                     $cleaned++;
+            //                 }
+            //             }
+                        
+            //             Notification::make()
+            //                 ->success()
+            //                 ->title('Limpieza completada')
+            //                 ->body("Se eliminaron {$cleaned} registros sin archivo.")
+            //                 ->send();
+            //         })
+            //         ->requiresConfirmation()
+            //         ->modalHeading('Limpiar registros sin archivo')
+            //         ->modalDescription('¿Está seguro de que desea eliminar los registros de reportes cuyos archivos ya no existen?')
+            //         ->modalSubmitActionLabel('Limpiar'),
+            // ])
             ->actions([
                 Tables\Actions\Action::make('download')
                     ->label('Descargar')

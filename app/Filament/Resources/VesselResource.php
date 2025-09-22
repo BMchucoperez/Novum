@@ -367,7 +367,7 @@ class VesselResource extends Resource
                 Tables\Columns\TextColumn::make('serviceType.name')
                     ->searchable()
                     ->sortable()
-                    ->label('Tipo de Servicio')
+                    ->label('Tipo de Embarcación')
                     ->badge()
                     ->color('success'),
 
@@ -382,16 +382,16 @@ class VesselResource extends Resource
                 Tables\Columns\TextColumn::make('owner.name')
                     ->searchable()
                     ->sortable()
-                    ->label('Propietario')
+                    ->label('Propietario / Armador')
                     ->limit(30)
                     ->icon('heroicon-o-user'),
 
-                Tables\Columns\TextColumn::make('user.name')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Usuario Asignado')
-                    ->limit(30)
-                    ->icon('heroicon-o-user-circle'),
+                // Tables\Columns\TextColumn::make('user.name')
+                //     ->searchable()
+                //     ->sortable()
+                //     ->label('Usuario Asignado')
+                //     ->limit(30)
+                //     ->icon('heroicon-o-user-circle'),
 
                 // Tables\Columns\TextColumn::make('associated_vessels_count')
                 //     ->label('Embarcaciones Asociadas')
@@ -417,7 +417,8 @@ class VesselResource extends Resource
 
                 Tables\Columns\TextColumn::make('construction_year')
                     ->sortable()
-                    ->label('Año')
+                    ->label('Año de Construcción')
+                    ->alignCenter()
                     ->icon('heroicon-o-calendar'),
 
                 // Columnas adicionales (ocultas por defecto)                
@@ -427,12 +428,22 @@ class VesselResource extends Resource
                     ->icon('heroicon-o-map-pin')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('dimensions')
-                    ->label('Dimensiones')
-                    ->state(function (Vessel $record): string {
-                        return "{$record->length}m × {$record->beam}m × {$record->depth}m";
-                    })
-                    ->icon('heroicon-o-variable')
+                Tables\Columns\TextColumn::make('length')
+                    ->label('Eslora')
+                    ->formatStateUsing(fn (float $state): string => "{$state}m")
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('beam')
+                    ->label('Manga')
+                    ->formatStateUsing(fn (float $state): string => "{$state}m")
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('depth')
+                    ->label('Puntal')
+                    ->formatStateUsing(fn (float $state): string => "{$state}m")
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('gross_tonnage')
@@ -498,42 +509,34 @@ class VesselResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('service_type_id')
                     ->relationship('serviceType', 'name')
-                    ->label('Tipo de Servicio')
-                    ->indicator('Tipo de Servicio')
-                    ->multiple()
-                    ->preload()
-                    ->searchable(),
-
-                Tables\Filters\SelectFilter::make('navigation_type_id')
-                    ->relationship('navigationType', 'name')
-                    ->label('Tipo de Navegación')
-                    ->indicator('Tipo de Navegación')
+                    ->label('Tipo de Embarcación')
+                    ->indicator('Tipo de Embarcación')
                     ->multiple()
                     ->preload()
                     ->searchable(),
 
                 Tables\Filters\SelectFilter::make('owner_id')
                     ->relationship('owner', 'name')
-                    ->label('Propietario')
+                    ->label('Propietario / Armador')
                     ->searchable()
                     ->preload(),
 
-                Tables\Filters\SelectFilter::make('shipyard_id')
-                    ->relationship('shipyard', 'name')
-                    ->label('Astillero')
-                    ->preload()
-                    ->searchable(),
+                // Tables\Filters\SelectFilter::make('shipyard_id')
+                //     ->relationship('shipyard', 'name')
+                //     ->label('Astillero')
+                //     ->preload()
+                //     ->searchable(),
 
-                Tables\Filters\SelectFilter::make('user_id')
-                    ->relationship('user', 'name', function ($query) {
-                        // Solo mostrar usuarios con el rol "Armador"
-                        return $query->whereHas('roles', function ($query) {
-                            $query->where('name', 'Armador');
-                        });
-                    })
-                    ->label('Usuario Asignado')
-                    ->preload()
-                    ->searchable(),
+                // Tables\Filters\SelectFilter::make('user_id')
+                //     ->relationship('user', 'name', function ($query) {
+                //         // Solo mostrar usuarios con el rol "Armador"
+                //         return $query->whereHas('roles', function ($query) {
+                //             $query->where('name', 'Armador');
+                //         });
+                //     })
+                //     ->label('Usuario Asignado')
+                //     ->preload()
+                //     ->searchable(),
             ])
             ->filtersFormColumns(3)
             ->actions([
