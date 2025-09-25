@@ -665,14 +665,118 @@ class VesselResource extends Resource
                     }
                 })
                 ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                    $startTime = microtime(true);
+                    $fieldName = "document_{$documentType}";
+
+                    Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED INICIADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'vessel_name' => $record ? $record->name : 'null',
+                        'field_name' => $fieldName,
+                        'document_type' => $documentType,
+                        'document_name' => $documentName,
+                        'category' => $category,
+                        'state_type' => gettype($state),
+                        'state_count' => is_array($state) ? count($state) : (empty($state) ? 0 : 1),
+                        'has_record' => !empty($record),
+                        'has_state' => !empty($state),
+                        'timestamp' => now()->toDateTimeString(),
+                        'memory_usage' => memory_get_usage(true),
+                        'user_id' => auth()->id(),
+                    ]);
+
                     if ($record && !empty($state)) {
+                        Log::info('🔍 ANALIZANDO ARCHIVOS EN STATE', [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'state_details' => array_map(function($file, $index) {
+                                return [
+                                    'index' => $index,
+                                    'type' => gettype($file),
+                                    'is_string' => is_string($file),
+                                    'is_object' => is_object($file),
+                                    'class' => is_object($file) ? get_class($file) : 'not_object',
+                                    'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+                                    'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
+                                    'will_process' => $file && !is_string($file)
+                                ];
+                            }, $state, array_keys($state))
+                        ]);
+
+                        $processedCount = 0;
+                        $skippedCount = 0;
+                        $errors = [];
+
                         // Procesar archivos nuevos cuando se suban
-                        foreach ($state as $file) {
+                        foreach ($state as $index => $file) {
                             if ($file && !is_string($file)) {
-                                // Solo procesar archivos nuevos (no rutas de archivos existentes)
-                                static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . count($state), [
+                                    'vessel_id' => $record->id,
+                                    'field_name' => $fieldName,
+                                    'file_index' => $index,
+                                    'file_type' => gettype($file),
+                                    'file_class' => is_object($file) ? get_class($file) : 'not_object',
+                                ]);
+
+                                try {
+                                    // Solo procesar archivos nuevos (no rutas de archivos existentes)
+                                    static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                                    $processedCount++;
+
+                                    Log::info("✅ ARCHIVO PROCESADO EN CALLBACK", [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'file_index' => $index,
+                                    ]);
+
+                                } catch (\Exception $e) {
+                                    $errors[] = [
+                                        'file_index' => $index,
+                                        'error' => $e->getMessage()
+                                    ];
+
+                                    Log::error("❌ ERROR EN CALLBACK FILEUPLOAD", [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'file_index' => $index,
+                                        'error_message' => $e->getMessage(),
+                                        'error_trace' => $e->getTraceAsString(),
+                                    ]);
+                                }
+                            } else {
+                                $skippedCount++;
+                                Log::info("⏭️ ARCHIVO OMITIDO (string o null)", [
+                                    'vessel_id' => $record->id,
+                                    'field_name' => $fieldName,
+                                    'file_index' => $index,
+                                    'reason' => is_string($file) ? 'existing_file_path' : 'null_file',
+                                    'value' => is_string($file) ? $file : 'null'
+                                ]);
                             }
                         }
+
+                        $endTime = microtime(true);
+                        $processingTime = ($endTime - $startTime) * 1000;
+
+                        Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED COMPLETADO =====', [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'total_files' => count($state),
+                            'processed_files' => $processedCount,
+                            'skipped_files' => $skippedCount,
+                            'errors_count' => count($errors),
+                            'errors' => $errors,
+                            'processing_time_ms' => round($processingTime, 2),
+                            'success' => count($errors) === 0,
+                        ]);
+
+                    } else {
+                        Log::warning('⚠️ CALLBACK SIN PROCESAR', [
+                            'vessel_id' => $record ? $record->id : 'null',
+                            'field_name' => $fieldName,
+                            'has_record' => !empty($record),
+                            'has_state' => !empty($state),
+                            'reason' => !$record ? 'no_record' : 'empty_state'
+                        ]);
                     }
                 })
                 ->downloadable()
@@ -901,14 +1005,118 @@ class VesselResource extends Resource
                     }
                 })
                 ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                    $startTime = microtime(true);
+                    $fieldName = "document_{$documentType}";
+
+                    Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED INICIADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'vessel_name' => $record ? $record->name : 'null',
+                        'field_name' => $fieldName,
+                        'document_type' => $documentType,
+                        'document_name' => $documentName,
+                        'category' => $category,
+                        'state_type' => gettype($state),
+                        'state_count' => is_array($state) ? count($state) : (empty($state) ? 0 : 1),
+                        'has_record' => !empty($record),
+                        'has_state' => !empty($state),
+                        'timestamp' => now()->toDateTimeString(),
+                        'memory_usage' => memory_get_usage(true),
+                        'user_id' => auth()->id(),
+                    ]);
+
                     if ($record && !empty($state)) {
+                        Log::info('🔍 ANALIZANDO ARCHIVOS EN STATE', [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'state_details' => array_map(function($file, $index) {
+                                return [
+                                    'index' => $index,
+                                    'type' => gettype($file),
+                                    'is_string' => is_string($file),
+                                    'is_object' => is_object($file),
+                                    'class' => is_object($file) ? get_class($file) : 'not_object',
+                                    'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+                                    'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
+                                    'will_process' => $file && !is_string($file)
+                                ];
+                            }, $state, array_keys($state))
+                        ]);
+
+                        $processedCount = 0;
+                        $skippedCount = 0;
+                        $errors = [];
+
                         // Procesar archivos nuevos cuando se suban
-                        foreach ($state as $file) {
+                        foreach ($state as $index => $file) {
                             if ($file && !is_string($file)) {
-                                // Solo procesar archivos nuevos (no rutas de archivos existentes)
-                                static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . count($state), [
+                                    'vessel_id' => $record->id,
+                                    'field_name' => $fieldName,
+                                    'file_index' => $index,
+                                    'file_type' => gettype($file),
+                                    'file_class' => is_object($file) ? get_class($file) : 'not_object',
+                                ]);
+
+                                try {
+                                    // Solo procesar archivos nuevos (no rutas de archivos existentes)
+                                    static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                                    $processedCount++;
+
+                                    Log::info("✅ ARCHIVO PROCESADO EN CALLBACK", [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'file_index' => $index,
+                                    ]);
+
+                                } catch (\Exception $e) {
+                                    $errors[] = [
+                                        'file_index' => $index,
+                                        'error' => $e->getMessage()
+                                    ];
+
+                                    Log::error("❌ ERROR EN CALLBACK FILEUPLOAD", [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'file_index' => $index,
+                                        'error_message' => $e->getMessage(),
+                                        'error_trace' => $e->getTraceAsString(),
+                                    ]);
+                                }
+                            } else {
+                                $skippedCount++;
+                                Log::info("⏭️ ARCHIVO OMITIDO (string o null)", [
+                                    'vessel_id' => $record->id,
+                                    'field_name' => $fieldName,
+                                    'file_index' => $index,
+                                    'reason' => is_string($file) ? 'existing_file_path' : 'null_file',
+                                    'value' => is_string($file) ? $file : 'null'
+                                ]);
                             }
                         }
+
+                        $endTime = microtime(true);
+                        $processingTime = ($endTime - $startTime) * 1000;
+
+                        Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED COMPLETADO =====', [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'total_files' => count($state),
+                            'processed_files' => $processedCount,
+                            'skipped_files' => $skippedCount,
+                            'errors_count' => count($errors),
+                            'errors' => $errors,
+                            'processing_time_ms' => round($processingTime, 2),
+                            'success' => count($errors) === 0,
+                        ]);
+
+                    } else {
+                        Log::warning('⚠️ CALLBACK SIN PROCESAR', [
+                            'vessel_id' => $record ? $record->id : 'null',
+                            'field_name' => $fieldName,
+                            'has_record' => !empty($record),
+                            'has_state' => !empty($state),
+                            'reason' => !$record ? 'no_record' : 'empty_state'
+                        ]);
                     }
                 })
                 ->downloadable()
