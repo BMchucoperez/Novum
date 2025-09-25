@@ -638,14 +638,14 @@ class VesselResource extends Resource
         foreach ($documents as $documentType => $documentName) {
             $fields[] = Forms\Components\FileUpload::make("document_{$documentType}")
                 ->label($documentName)
-                ->disk('local')
+                ->disk('public')
                 ->directory(function ($record) use ($category) {
                     if ($record && $record->id) {
                         // Embarcación existente
-                        return "public/vessel-documents/{$record->id}/{$category}";
+                        return "vessel-documents/{$record->id}/{$category}";
                     } else {
                         // Nueva embarcación - usar directorio temporal
-                        return "public/vessel-documents/temp/{$category}";
+                        return "vessel-documents/temp/{$category}";
                     }
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
@@ -781,52 +781,71 @@ class VesselResource extends Resource
                         $stateArray = is_array($state) ? $state : [$state];
                         $totalFiles = count($stateArray);
 
-                        // Procesar archivos nuevos cuando se suban
+                        // Detectar archivos nuevos vs existentes
+                        $hasNewFiles = false;
+                        $newFileDetected = null;
+
                         foreach ($stateArray as $index => $file) {
                             if ($file && !is_string($file)) {
-                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $totalFiles, [
+                                $hasNewFiles = true;
+                                $newFileDetected = $file;
+                                break;
+                            }
+                        }
+
+                        Log::info("🔍 ANÁLISIS DE ARCHIVOS EN STATE", [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'total_files' => $totalFiles,
+                            'has_new_files' => $hasNewFiles,
+                            'has_new_upload' => !empty($newFileDetected),
+                        ]);
+
+                        // Si hay archivos nuevos, procesar solo el más reciente (último subido)
+                        if ($hasNewFiles && $newFileDetected) {
+                            Log::info("📂 PROCESANDO ARCHIVO NUEVO DETECTADO", [
+                                'vessel_id' => $record->id,
+                                'field_name' => $fieldName,
+                                'file_type' => gettype($newFileDetected),
+                                'file_class' => is_object($newFileDetected) ? get_class($newFileDetected) : 'not_object',
+                                'action' => 'replace_existing_document',
+                            ]);
+
+                            try {
+                                // Procesar el archivo nuevo (esto reemplazará el existente)
+                                static::handleDocumentUpload($newFileDetected, $record, $documentType, $category, $documentName);
+                                $processedCount++;
+
+                                Log::info("✅ ARCHIVO NUEVO PROCESADO Y REEMPLAZADO", [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
-                                    'file_index' => $index,
-                                    'file_type' => gettype($file),
-                                    'file_class' => is_object($file) ? get_class($file) : 'not_object',
+                                    'action' => 'document_replaced',
                                 ]);
 
-                                try {
-                                    // Solo procesar archivos nuevos (no rutas de archivos existentes)
-                                    static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
-                                    $processedCount++;
+                            } catch (\Exception $e) {
+                                $errors[] = [
+                                    'file_type' => 'new_upload',
+                                    'error' => $e->getMessage()
+                                ];
 
-                                    Log::info("✅ ARCHIVO PROCESADO EN CALLBACK", [
-                                        'vessel_id' => $record->id,
-                                        'field_name' => $fieldName,
-                                        'file_index' => $index,
-                                    ]);
-
-                                } catch (\Exception $e) {
-                                    $errors[] = [
-                                        'file_index' => $index,
-                                        'error' => $e->getMessage()
-                                    ];
-
-                                    Log::error("❌ ERROR EN CALLBACK FILEUPLOAD", [
-                                        'vessel_id' => $record->id,
-                                        'field_name' => $fieldName,
-                                        'file_index' => $index,
-                                        'error_message' => $e->getMessage(),
-                                        'error_trace' => $e->getTraceAsString(),
-                                    ]);
-                                }
-                            } else {
-                                $skippedCount++;
-                                Log::info("⏭️ ARCHIVO OMITIDO (string o null)", [
+                                Log::error("❌ ERROR PROCESANDO ARCHIVO NUEVO", [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
-                                    'file_index' => $index,
-                                    'reason' => is_string($file) ? 'existing_file_path' : 'null_file',
-                                    'value' => is_string($file) ? $file : 'null'
+                                    'error_message' => $e->getMessage(),
+                                    'error_trace' => $e->getTraceAsString(),
                                 ]);
                             }
+                        } else {
+                            // Solo archivos existentes, no hacer nada
+                            $skippedCount = $totalFiles;
+                            Log::info("⏭️ SOLO ARCHIVOS EXISTENTES DETECTADOS", [
+                                'vessel_id' => $record->id,
+                                'field_name' => $fieldName,
+                                'reason' => 'no_new_uploads_detected',
+                                'existing_files' => array_map(function($file) {
+                                    return is_string($file) ? basename($file) : 'unknown';
+                                }, $stateArray),
+                            ]);
                         }
 
                         $endTime = microtime(true);
@@ -895,7 +914,7 @@ class VesselResource extends Resource
                 $existingDocument->delete();
             }
 
-            $disk = Storage::disk('local');
+            $disk = Storage::disk('public');
             
             // Si es un TemporaryUploadedFile (objeto de Livewire)
             if (is_object($file) && method_exists($file, 'store')) {
@@ -906,8 +925,8 @@ class VesselResource extends Resource
                 $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
                 $storagePath = "vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
                 
-                // Usar el método store de Livewire
-                $finalPath = $file->storeAs("public/vessel-documents/{$vessel->id}/{$category}", $newFileName, 'local');
+                // Usar el método store de Livewire en disco público
+                $finalPath = $file->storeAs("vessel-documents/{$vessel->id}/{$category}", $newFileName, 'public');
                 
                 $fileSize = $file->getSize();
                 $mimeType = $file->getMimeType();
@@ -931,7 +950,7 @@ class VesselResource extends Resource
                 }
                 
                 $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
-                $finalPath = "public/vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
+                $finalPath = "vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
                 
                 $success = $disk->put($finalPath, $content);
                 if (!$success) {
@@ -1054,14 +1073,14 @@ class VesselResource extends Resource
         foreach ($documents as $documentType => $documentName) {
             $fields[] = Forms\Components\FileUpload::make("document_{$documentType}")
                 ->label($documentName)
-                ->disk('local')
+                ->disk('public')
                 ->directory(function ($record) use ($category) {
                     if ($record && $record->id) {
                         // Embarcación existente
-                        return "public/vessel-documents/{$record->id}/{$category}";
+                        return "vessel-documents/{$record->id}/{$category}";
                     } else {
                         // Nueva embarcación - usar directorio temporal
-                        return "public/vessel-documents/temp/{$category}";
+                        return "vessel-documents/temp/{$category}";
                     }
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
@@ -1196,52 +1215,71 @@ class VesselResource extends Resource
                         $stateArray = is_array($state) ? $state : [$state];
                         $totalFiles = count($stateArray);
 
-                        // Procesar archivos nuevos cuando se suban
+                        // Detectar archivos nuevos vs existentes
+                        $hasNewFiles = false;
+                        $newFileDetected = null;
+
                         foreach ($stateArray as $index => $file) {
                             if ($file && !is_string($file)) {
-                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $totalFiles, [
+                                $hasNewFiles = true;
+                                $newFileDetected = $file;
+                                break;
+                            }
+                        }
+
+                        Log::info("🔍 ANÁLISIS DE ARCHIVOS EN STATE", [
+                            'vessel_id' => $record->id,
+                            'field_name' => $fieldName,
+                            'total_files' => $totalFiles,
+                            'has_new_files' => $hasNewFiles,
+                            'has_new_upload' => !empty($newFileDetected),
+                        ]);
+
+                        // Si hay archivos nuevos, procesar solo el más reciente (último subido)
+                        if ($hasNewFiles && $newFileDetected) {
+                            Log::info("📂 PROCESANDO ARCHIVO NUEVO DETECTADO", [
+                                'vessel_id' => $record->id,
+                                'field_name' => $fieldName,
+                                'file_type' => gettype($newFileDetected),
+                                'file_class' => is_object($newFileDetected) ? get_class($newFileDetected) : 'not_object',
+                                'action' => 'replace_existing_document',
+                            ]);
+
+                            try {
+                                // Procesar el archivo nuevo (esto reemplazará el existente)
+                                static::handleDocumentUpload($newFileDetected, $record, $documentType, $category, $documentName);
+                                $processedCount++;
+
+                                Log::info("✅ ARCHIVO NUEVO PROCESADO Y REEMPLAZADO", [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
-                                    'file_index' => $index,
-                                    'file_type' => gettype($file),
-                                    'file_class' => is_object($file) ? get_class($file) : 'not_object',
+                                    'action' => 'document_replaced',
                                 ]);
 
-                                try {
-                                    // Solo procesar archivos nuevos (no rutas de archivos existentes)
-                                    static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
-                                    $processedCount++;
+                            } catch (\Exception $e) {
+                                $errors[] = [
+                                    'file_type' => 'new_upload',
+                                    'error' => $e->getMessage()
+                                ];
 
-                                    Log::info("✅ ARCHIVO PROCESADO EN CALLBACK", [
-                                        'vessel_id' => $record->id,
-                                        'field_name' => $fieldName,
-                                        'file_index' => $index,
-                                    ]);
-
-                                } catch (\Exception $e) {
-                                    $errors[] = [
-                                        'file_index' => $index,
-                                        'error' => $e->getMessage()
-                                    ];
-
-                                    Log::error("❌ ERROR EN CALLBACK FILEUPLOAD", [
-                                        'vessel_id' => $record->id,
-                                        'field_name' => $fieldName,
-                                        'file_index' => $index,
-                                        'error_message' => $e->getMessage(),
-                                        'error_trace' => $e->getTraceAsString(),
-                                    ]);
-                                }
-                            } else {
-                                $skippedCount++;
-                                Log::info("⏭️ ARCHIVO OMITIDO (string o null)", [
+                                Log::error("❌ ERROR PROCESANDO ARCHIVO NUEVO", [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
-                                    'file_index' => $index,
-                                    'reason' => is_string($file) ? 'existing_file_path' : 'null_file',
-                                    'value' => is_string($file) ? $file : 'null'
+                                    'error_message' => $e->getMessage(),
+                                    'error_trace' => $e->getTraceAsString(),
                                 ]);
                             }
+                        } else {
+                            // Solo archivos existentes, no hacer nada
+                            $skippedCount = $totalFiles;
+                            Log::info("⏭️ SOLO ARCHIVOS EXISTENTES DETECTADOS", [
+                                'vessel_id' => $record->id,
+                                'field_name' => $fieldName,
+                                'reason' => 'no_new_uploads_detected',
+                                'existing_files' => array_map(function($file) {
+                                    return is_string($file) ? basename($file) : 'unknown';
+                                }, $stateArray),
+                            ]);
                         }
 
                         $endTime = microtime(true);

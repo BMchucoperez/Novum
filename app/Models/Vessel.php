@@ -210,8 +210,8 @@ class Vessel extends Model
         ]);
 
         if ($document) {
-            // Verificar archivo físico
-            $fullPath = storage_path('app/' . $document->file_path);
+            // Verificar archivo físico en disco público
+            $fullPath = storage_path('app/public/' . $document->file_path);
             $fileExists = file_exists($fullPath);
 
             Log::info('💾 VERIFICACIÓN ARCHIVO FÍSICO DESDE MODELO', [
