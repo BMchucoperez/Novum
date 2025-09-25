@@ -675,10 +675,13 @@ class VesselResource extends Resource
      */
     protected static function handleDocumentUpload($file, $vessel, $documentType, $category, $documentName): void
     {
-        Log::info('handleDocumentUpload called', [
+        Log::info('🔄 handleDocumentUpload INICIADO', [
             'file_type' => gettype($file),
             'file_class' => is_object($file) ? get_class($file) : 'not_object',
+            'file_original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+            'file_size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
             'vessel_id' => $vessel ? $vessel->id : 'null',
+            'vessel_name' => $vessel ? $vessel->name : 'null',
             'document_type' => $documentType,
             'category' => $category,
             'document_name' => $documentName,
@@ -756,7 +759,7 @@ class VesselResource extends Resource
             }
 
             // Crear registro en base de datos
-            VesselDocument::create([
+            $vesselDocument = VesselDocument::create([
                 'vessel_id' => $vessel->id,
                 'document_type' => $documentType,
                 'document_category' => $category,
@@ -768,7 +771,17 @@ class VesselResource extends Resource
                 'uploaded_at' => now(),
                 'is_valid' => true,
             ]);
-            
+
+            Log::info("✅ DOCUMENTO REGISTRADO EXITOSAMENTE", [
+                'vessel_document_id' => $vesselDocument->id,
+                'document_type' => $documentType,
+                'document_name' => $documentName,
+                'file_path' => $finalPath,
+                'file_size' => $fileSize,
+                'vessel_id' => $vessel->id,
+                'vessel_name' => $vessel->name,
+            ]);
+
             // Notificar éxito
             \Filament\Notifications\Notification::make()
                 ->title('Documento subido correctamente')
@@ -776,14 +789,23 @@ class VesselResource extends Resource
                 ->success()
                 ->send();
             
-            Log::info("Documento registrado: {$documentType} para embarcación {$vessel->id}");
-            
         } catch (\Exception $e) {
-            Log::error("Error procesando documento {$documentType}: " . $e->getMessage());
-            
+            Log::error("❌ ERROR PROCESANDO DOCUMENTO", [
+                'document_type' => $documentType,
+                'document_name' => $documentName,
+                'category' => $category,
+                'vessel_id' => $vessel ? $vessel->id : 'null',
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+                'file_info' => is_object($file) ? [
+                    'class' => get_class($file),
+                    'original_name' => method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown'
+                ] : 'not_object'
+            ]);
+
             \Filament\Notifications\Notification::make()
                 ->title('Error al subir documento')
-                ->body($e->getMessage())
+                ->body("Error con {$documentName}: " . $e->getMessage())
                 ->danger()
                 ->send();
         }
