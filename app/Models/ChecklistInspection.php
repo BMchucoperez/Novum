@@ -20,7 +20,6 @@ class ChecklistInspection extends Model
         'vessel_id',
         'inspection_start_date',
         'inspection_end_date',
-        'convoy_date',
         'inspector_name',
         'parte_1_items',
         'parte_2_items',
@@ -40,7 +39,6 @@ class ChecklistInspection extends Model
     protected $casts = [
         'inspection_start_date' => 'date',
         'inspection_end_date' => 'date',
-        'convoy_date' => 'date',
         'parte_1_items' => 'array',
         'parte_2_items' => 'array',
         'parte_3_items' => 'array',

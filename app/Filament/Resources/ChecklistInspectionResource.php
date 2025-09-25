@@ -227,18 +227,6 @@ class ChecklistInspectionResource extends Resource
                                         'lg' => 1,
                                     ]),
 
-                                Forms\Components\DatePicker::make('convoy_date')
-                                    ->label('📅 Fecha de Convoy')
-                                    ->required()
-                                    ->default(now())
-                                    ->prefixIcon('heroicon-o-calendar-days')
-                                    ->displayFormat('d/m/Y')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'md' => 1,
-                                        'lg' => 1,
-                                    ]),
-
                                 Forms\Components\Select::make('inspector_name')
                                     ->label('👷 Inspector Asignado')
                                     ->options(function () {
@@ -753,11 +741,6 @@ class ChecklistInspectionResource extends Resource
 
                 Tables\Columns\TextColumn::make('inspection_end_date')
                     ->label('Fin Inspección')
-                    ->date('d/m/Y')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('convoy_date')
-                    ->label('Fecha de Convoy')
                     ->date('d/m/Y')
                     ->sortable(),
 
