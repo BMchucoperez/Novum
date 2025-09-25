@@ -652,17 +652,77 @@ class VesselResource extends Resource
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
 
-                ->afterStateHydrated(function ($component, $record) use ($documentType) {
+                ->afterStateHydrated(function ($component, $record) use ($documentType, $category, $documentName) {
+                    Log::info('🔍 ===== AFTERSTATEHYDRATED INICIADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'vessel_name' => $record ? $record->name : 'null',
+                        'document_type' => $documentType,
+                        'document_name' => $documentName,
+                        'category' => $category,
+                        'field_name' => "document_{$documentType}",
+                    ]);
+
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
+
+                        Log::info('📄 BUSCANDO DOCUMENTO EN BD', [
+                            'vessel_id' => $record->id,
+                            'document_type' => $documentType,
+                            'document_found' => !empty($document),
+                            'document_id' => $document ? $document->id : 'null',
+                            'document_file_path' => $document ? $document->file_path : 'null',
+                            'document_file_name' => $document ? $document->file_name : 'null',
+                        ]);
+
                         if ($document && $document->file_path) {
+                            // Verificar si el archivo existe físicamente
+                            $fullPath = storage_path('app/' . $document->file_path);
+                            $fileExists = file_exists($fullPath);
+                            $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
+                            $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
+
+                            Log::info('💾 VERIFICACIÓN FÍSICA DEL ARCHIVO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'db_file_path' => $document->file_path,
+                                'full_storage_path' => $fullPath,
+                                'file_exists' => $fileExists,
+                                'file_permissions' => $filePermissions,
+                                'file_size_bytes' => $fileSize,
+                                'storage_disk' => 'local',
+                                'expected_public_url' => url('storage/' . str_replace('public/', '', $document->file_path)),
+                            ]);
+
                             // Para FileUpload, el estado debe ser un array de archivos
                             $component->state([$document->file_path]);
+
+                            Log::info('✅ COMPONENT STATE CONFIGURADO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'component_state' => [$document->file_path],
+                                'state_count' => 1,
+                            ]);
                         } else {
                             // Si no hay documento, estado vacío
                             $component->state([]);
+
+                            Log::info('❌ NO HAY DOCUMENTO - STATE VACÍO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'reason' => !$document ? 'no_document_in_db' : 'no_file_path',
+                            ]);
                         }
+                    } else {
+                        Log::warning('⚠️ NO HAY RECORD EN AFTERSTATEHYDRATED', [
+                            'document_type' => $documentType,
+                            'reason' => 'record_is_null'
+                        ]);
                     }
+
+                    Log::info('🔍 ===== AFTERSTATEHYDRATED COMPLETADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'document_type' => $documentType,
+                    ]);
                 })
                 ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
                     $startTime = microtime(true);
@@ -1007,17 +1067,77 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-                ->afterStateHydrated(function ($component, $record) use ($documentType) {
+                ->afterStateHydrated(function ($component, $record) use ($documentType, $category, $documentName) {
+                    Log::info('🔍 ===== AFTERSTATEHYDRATED INICIADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'vessel_name' => $record ? $record->name : 'null',
+                        'document_type' => $documentType,
+                        'document_name' => $documentName,
+                        'category' => $category,
+                        'field_name' => "document_{$documentType}",
+                    ]);
+
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
+
+                        Log::info('📄 BUSCANDO DOCUMENTO EN BD', [
+                            'vessel_id' => $record->id,
+                            'document_type' => $documentType,
+                            'document_found' => !empty($document),
+                            'document_id' => $document ? $document->id : 'null',
+                            'document_file_path' => $document ? $document->file_path : 'null',
+                            'document_file_name' => $document ? $document->file_name : 'null',
+                        ]);
+
                         if ($document && $document->file_path) {
+                            // Verificar si el archivo existe físicamente
+                            $fullPath = storage_path('app/' . $document->file_path);
+                            $fileExists = file_exists($fullPath);
+                            $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
+                            $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
+
+                            Log::info('💾 VERIFICACIÓN FÍSICA DEL ARCHIVO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'db_file_path' => $document->file_path,
+                                'full_storage_path' => $fullPath,
+                                'file_exists' => $fileExists,
+                                'file_permissions' => $filePermissions,
+                                'file_size_bytes' => $fileSize,
+                                'storage_disk' => 'local',
+                                'expected_public_url' => url('storage/' . str_replace('public/', '', $document->file_path)),
+                            ]);
+
                             // Para FileUpload, el estado debe ser un array de archivos
                             $component->state([$document->file_path]);
+
+                            Log::info('✅ COMPONENT STATE CONFIGURADO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'component_state' => [$document->file_path],
+                                'state_count' => 1,
+                            ]);
                         } else {
                             // Si no hay documento, estado vacío
                             $component->state([]);
+
+                            Log::info('❌ NO HAY DOCUMENTO - STATE VACÍO', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                                'reason' => !$document ? 'no_document_in_db' : 'no_file_path',
+                            ]);
                         }
+                    } else {
+                        Log::warning('⚠️ NO HAY RECORD EN AFTERSTATEHYDRATED', [
+                            'document_type' => $documentType,
+                            'reason' => 'record_is_null'
+                        ]);
                     }
+
+                    Log::info('🔍 ===== AFTERSTATEHYDRATED COMPLETADO =====', [
+                        'vessel_id' => $record ? $record->id : 'null',
+                        'document_type' => $documentType,
+                    ]);
                 })
                 ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
                     $startTime = microtime(true);
