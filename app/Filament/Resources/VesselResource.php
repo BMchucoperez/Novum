@@ -688,28 +688,43 @@ class VesselResource extends Resource
                         Log::info('🔍 ANALIZANDO ARCHIVOS EN STATE', [
                             'vessel_id' => $record->id,
                             'field_name' => $fieldName,
-                            'state_details' => array_map(function($file, $index) {
-                                return [
-                                    'index' => $index,
-                                    'type' => gettype($file),
-                                    'is_string' => is_string($file),
-                                    'is_object' => is_object($file),
-                                    'class' => is_object($file) ? get_class($file) : 'not_object',
-                                    'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
-                                    'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
-                                    'will_process' => $file && !is_string($file)
-                                ];
-                            }, $state, array_keys($state))
+                            'state_details' => is_array($state) ?
+                                array_map(function($file, $index) {
+                                    return [
+                                        'index' => $index,
+                                        'type' => gettype($file),
+                                        'is_string' => is_string($file),
+                                        'is_object' => is_object($file),
+                                        'class' => is_object($file) ? get_class($file) : 'not_object',
+                                        'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+                                        'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
+                                        'will_process' => $file && !is_string($file)
+                                    ];
+                                }, $state, array_keys($state)) :
+                                [[
+                                    'index' => 0,
+                                    'type' => gettype($state),
+                                    'is_string' => is_string($state),
+                                    'is_object' => is_object($state),
+                                    'class' => is_object($state) ? get_class($state) : 'not_object',
+                                    'original_name' => is_object($state) && method_exists($state, 'getClientOriginalName') ? $state->getClientOriginalName() : 'unknown',
+                                    'size' => is_object($state) && method_exists($state, 'getSize') ? $state->getSize() : 'unknown',
+                                    'will_process' => $state && !is_string($state)
+                                ]]
                         ]);
 
                         $processedCount = 0;
                         $skippedCount = 0;
                         $errors = [];
 
+                        // Normalizar state a array para procesamiento uniforme
+                        $stateArray = is_array($state) ? $state : [$state];
+                        $totalFiles = count($stateArray);
+
                         // Procesar archivos nuevos cuando se suban
-                        foreach ($state as $index => $file) {
+                        foreach ($stateArray as $index => $file) {
                             if ($file && !is_string($file)) {
-                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . count($state), [
+                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $totalFiles, [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
                                     'file_index' => $index,
@@ -760,7 +775,7 @@ class VesselResource extends Resource
                         Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED COMPLETADO =====', [
                             'vessel_id' => $record->id,
                             'field_name' => $fieldName,
-                            'total_files' => count($state),
+                            'total_files' => $totalFiles,
                             'processed_files' => $processedCount,
                             'skipped_files' => $skippedCount,
                             'errors_count' => count($errors),
@@ -1028,28 +1043,43 @@ class VesselResource extends Resource
                         Log::info('🔍 ANALIZANDO ARCHIVOS EN STATE', [
                             'vessel_id' => $record->id,
                             'field_name' => $fieldName,
-                            'state_details' => array_map(function($file, $index) {
-                                return [
-                                    'index' => $index,
-                                    'type' => gettype($file),
-                                    'is_string' => is_string($file),
-                                    'is_object' => is_object($file),
-                                    'class' => is_object($file) ? get_class($file) : 'not_object',
-                                    'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
-                                    'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
-                                    'will_process' => $file && !is_string($file)
-                                ];
-                            }, $state, array_keys($state))
+                            'state_details' => is_array($state) ?
+                                array_map(function($file, $index) {
+                                    return [
+                                        'index' => $index,
+                                        'type' => gettype($file),
+                                        'is_string' => is_string($file),
+                                        'is_object' => is_object($file),
+                                        'class' => is_object($file) ? get_class($file) : 'not_object',
+                                        'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+                                        'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
+                                        'will_process' => $file && !is_string($file)
+                                    ];
+                                }, $state, array_keys($state)) :
+                                [[
+                                    'index' => 0,
+                                    'type' => gettype($state),
+                                    'is_string' => is_string($state),
+                                    'is_object' => is_object($state),
+                                    'class' => is_object($state) ? get_class($state) : 'not_object',
+                                    'original_name' => is_object($state) && method_exists($state, 'getClientOriginalName') ? $state->getClientOriginalName() : 'unknown',
+                                    'size' => is_object($state) && method_exists($state, 'getSize') ? $state->getSize() : 'unknown',
+                                    'will_process' => $state && !is_string($state)
+                                ]]
                         ]);
 
                         $processedCount = 0;
                         $skippedCount = 0;
                         $errors = [];
 
+                        // Normalizar state a array para procesamiento uniforme
+                        $stateArray = is_array($state) ? $state : [$state];
+                        $totalFiles = count($stateArray);
+
                         // Procesar archivos nuevos cuando se suban
-                        foreach ($state as $index => $file) {
+                        foreach ($stateArray as $index => $file) {
                             if ($file && !is_string($file)) {
-                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . count($state), [
+                                Log::info("📂 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $totalFiles, [
                                     'vessel_id' => $record->id,
                                     'field_name' => $fieldName,
                                     'file_index' => $index,
@@ -1100,7 +1130,7 @@ class VesselResource extends Resource
                         Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED COMPLETADO =====', [
                             'vessel_id' => $record->id,
                             'field_name' => $fieldName,
-                            'total_files' => count($state),
+                            'total_files' => $totalFiles,
                             'processed_files' => $processedCount,
                             'skipped_files' => $skippedCount,
                             'errors_count' => count($errors),
