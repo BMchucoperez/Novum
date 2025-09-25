@@ -642,10 +642,10 @@ class VesselResource extends Resource
                 ->directory(function ($record) use ($category) {
                     if ($record && $record->id) {
                         // Embarcación existente
-                        return "private/vessel-documents/{$record->id}/{$category}";
+                        return "public/vessel-documents/{$record->id}/{$category}";
                     } else {
                         // Nueva embarcación - usar directorio temporal
-                        return "private/vessel-documents/temp/{$category}";
+                        return "public/vessel-documents/temp/{$category}";
                     }
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
@@ -847,7 +847,7 @@ class VesselResource extends Resource
                 $storagePath = "vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
                 
                 // Usar el método store de Livewire
-                $finalPath = $file->storeAs("private/vessel-documents/{$vessel->id}/{$category}", $newFileName, 'local');
+                $finalPath = $file->storeAs("public/vessel-documents/{$vessel->id}/{$category}", $newFileName, 'local');
                 
                 $fileSize = $file->getSize();
                 $mimeType = $file->getMimeType();
@@ -871,7 +871,7 @@ class VesselResource extends Resource
                 }
                 
                 $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
-                $finalPath = "private/vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
+                $finalPath = "public/vessel-documents/{$vessel->id}/{$category}/{$newFileName}";
                 
                 $success = $disk->put($finalPath, $content);
                 if (!$success) {
@@ -998,10 +998,10 @@ class VesselResource extends Resource
                 ->directory(function ($record) use ($category) {
                     if ($record && $record->id) {
                         // Embarcación existente
-                        return "private/vessel-documents/{$record->id}/{$category}";
+                        return "public/vessel-documents/{$record->id}/{$category}";
                     } else {
                         // Nueva embarcación - usar directorio temporal
-                        return "private/vessel-documents/temp/{$category}";
+                        return "public/vessel-documents/temp/{$category}";
                     }
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
