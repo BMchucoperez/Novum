@@ -664,6 +664,17 @@ class VesselResource extends Resource
                         }
                     }
                 })
+                ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                    if ($record && !empty($state)) {
+                        // Procesar archivos nuevos cuando se suban
+                        foreach ($state as $file) {
+                            if ($file && !is_string($file)) {
+                                // Solo procesar archivos nuevos (no rutas de archivos existentes)
+                                static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                            }
+                        }
+                    }
+                })
                 ->downloadable()
                 ->openable()
                 ->deletable(true)
@@ -886,6 +897,17 @@ class VesselResource extends Resource
                         } else {
                             // Si no hay documento, estado vacío
                             $component->state([]);
+                        }
+                    }
+                })
+                ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                    if ($record && !empty($state)) {
+                        // Procesar archivos nuevos cuando se suban
+                        foreach ($state as $file) {
+                            if ($file && !is_string($file)) {
+                                // Solo procesar archivos nuevos (no rutas de archivos existentes)
+                                static::handleDocumentUpload($file, $record, $documentType, $category, $documentName);
+                            }
                         }
                     }
                 })
