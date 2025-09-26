@@ -64,7 +64,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop()
             ->collapsibleNavigationGroups()
-            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearch(false)
             ->navigationGroups([
                 \Filament\Navigation\NavigationGroup::make()
                     ->label('Gestión de Embarcaciones')
@@ -95,6 +95,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugin(FilamentUsersPlugin::make())
             ->plugin(FilamentShieldPlugin::make())
-            ->plugin(FilamentApexChartsPlugin::make());
+            ->plugin(FilamentApexChartsPlugin::make())
+            ->renderHook('panels::body.end', fn (): string => view('google-translate')->render());
     }
 }
