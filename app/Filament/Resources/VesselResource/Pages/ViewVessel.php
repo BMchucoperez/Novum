@@ -85,145 +85,103 @@ class ViewVessel extends ViewRecord
                     ->columns(3),
 
                 Infolists\Components\Section::make('Resumen de Documentos')
-                    ->description('Estadísticas y resumen de documentos cargados')
+                    ->description('Estadísticas completas y resumen de documentos cargados')
                     ->schema([
-                        Infolists\Components\Grid::make(4)->schema([
-                            Infolists\Components\TextEntry::make('total_documents')
-                                ->label('Total Documentos')
-                                ->state(function ($record) {
-                                    return $record->vesselDocuments()->count();
-                                })
-                                ->formatStateUsing(fn ($state) => "<span class='text-xl font-bold text-blue-600'>{$state}</span>")
-                                ->html()
-                                ->extraAttributes(['class' => 'text-center']),
+                        Infolists\Components\Grid::make(2)->schema([
+                            // Primera fila - Estadísticas principales
+                            Infolists\Components\Grid::make(4)->schema([
+                                Infolists\Components\TextEntry::make('total_documents')
+                                    ->label('Total Documentos')
+                                    ->state(function ($record) {
+                                        return $record->vesselDocuments()->count();
+                                    })
+                                    ->formatStateUsing(fn ($state) => "
+                                        <div class='text-center p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                                            <div class='text-2xl font-bold text-blue-700'>{$state}</div>
+                                            <div class='text-xs text-blue-600 mt-1'>Documentos</div>
+                                        </div>
+                                    ")
+                                    ->html(),
 
-                            Infolists\Components\TextEntry::make('valid_documents')
-                                ->label('Documentos Válidos')
-                                ->state(function ($record) {
-                                    return $record->vesselDocuments()->valid()->count();
-                                })
-                                ->formatStateUsing(fn ($state) => "<span class='text-xl font-bold text-green-600'>{$state}</span>")
-                                ->html()
-                                ->extraAttributes(['class' => 'text-center']),
+                                Infolists\Components\TextEntry::make('valid_documents')
+                                    ->label('Documentos Válidos')
+                                    ->state(function ($record) {
+                                        return $record->vesselDocuments()->valid()->count();
+                                    })
+                                    ->formatStateUsing(fn ($state) => "
+                                        <div class='text-center p-3 bg-green-50 rounded-lg border border-green-200'>
+                                            <div class='text-2xl font-bold text-green-700'>{$state}</div>
+                                            <div class='text-xs text-green-600 mt-1'>Válidos</div>
+                                        </div>
+                                    ")
+                                    ->html(),
 
-                            Infolists\Components\TextEntry::make('expired_documents')
-                                ->label('Documentos Vencidos')
-                                ->state(function ($record) {
-                                    return $record->vesselDocuments()->expired()->count();
-                                })
-                                ->formatStateUsing(function ($state) {
-                                    $color = $state > 0 ? 'text-red-600' : 'text-gray-600';
-                                    return "<span class='text-xl font-bold {$color}'>{$state}</span>";
-                                })
-                                ->html()
-                                ->extraAttributes(['class' => 'text-center']),
+                                Infolists\Components\TextEntry::make('expired_documents')
+                                    ->label('Documentos Vencidos')
+                                    ->state(function ($record) {
+                                        return $record->vesselDocuments()->expired()->count();
+                                    })
+                                    ->formatStateUsing(function ($state) {
+                                        $bgColor = $state > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200';
+                                        $textColor = $state > 0 ? 'text-red-700' : 'text-gray-600';
+                                        $subTextColor = $state > 0 ? 'text-red-600' : 'text-gray-500';
+                                        return "
+                                            <div class='text-center p-3 {$bgColor} rounded-lg border'>
+                                                <div class='text-2xl font-bold {$textColor}'>{$state}</div>
+                                                <div class='text-xs {$subTextColor} mt-1'>Vencidos</div>
+                                            </div>
+                                        ";
+                                    })
+                                    ->html(),
 
-                            Infolists\Components\TextEntry::make('completeness')
-                                ->label('Completitud')
-                                ->state(function ($record) {
-                                    return $record->getDocumentCompleteness();
-                                })
-                                ->formatStateUsing(function ($state) {
-                                    $color = $state >= 80 ? 'text-green-600' : ($state >= 50 ? 'text-yellow-600' : 'text-red-600');
-                                    return "<span class='text-xl font-bold {$color}'>{$state}%</span>";
-                                })
-                                ->html()
-                                ->extraAttributes(['class' => 'text-center']),
+                                Infolists\Components\TextEntry::make('completeness')
+                                    ->label('Completitud')
+                                    ->state(function ($record) {
+                                        return $record->getDocumentCompleteness();
+                                    })
+                                    ->formatStateUsing(function ($state) {
+                                        $colors = match(true) {
+                                            $state >= 80 => ['bg' => 'bg-green-50 border-green-200', 'text' => 'text-green-700', 'sub' => 'text-green-600'],
+                                            $state >= 50 => ['bg' => 'bg-yellow-50 border-yellow-200', 'text' => 'text-yellow-700', 'sub' => 'text-yellow-600'],
+                                            default => ['bg' => 'bg-red-50 border-red-200', 'text' => 'text-red-700', 'sub' => 'text-red-600']
+                                        };
+                                        return "
+                                            <div class='text-center p-3 {$colors['bg']} rounded-lg border'>
+                                                <div class='text-2xl font-bold {$colors['text']}'>{$state}%</div>
+                                                <div class='text-xs {$colors['sub']} mt-1'>Completitud</div>
+                                            </div>
+                                        ";
+                                    })
+                                    ->html(),
+                            ])
+                            ->columnSpan(2),
                         ]),
                     ])
-                    ->columns(2),
+                    ->columns(1)
+                    ->collapsible()
+                    ->collapsed(false),
 
                 Infolists\Components\Section::make('Documentos Anexos')
-                    ->description(function ($record) {
-                        $count = $record->vesselDocuments()->count();
-                        return "Actualmente hay {$count} documento" . ($count !== 1 ? 's' : '') . " cargados. Desplázate para ver todos los documentos.";
-                    })
                     ->schema([
                         Infolists\Components\RepeatableEntry::make('vesselDocuments')
-                            ->label('Documentos')
                             ->schema([
-                                // Primera fila: Información principal
-                                Infolists\Components\Grid::make(4)->schema([
-                                    Infolists\Components\TextEntry::make('document_name')
-                                        ->label('Documento')
-                                        ->weight('bold')
-                                        ->columnSpan(2),
-                                    
-                                    Infolists\Components\TextEntry::make('document_category')
-                                        ->label('Categoría')
-                                        ->formatStateUsing(fn (string $state): string => match($state) {
-                                            'bandeira_apolices' => 'Bandeira e Apólices',
-                                            'sistema_gestao' => 'Sistema de Gestão',
-                                            'barcaza_exclusive' => 'Barcaza Exclusivo',
-                                            'empujador_exclusive' => 'Empujador Exclusivo',
-                                            'motochata_exclusive' => 'Motochata Exclusivo',
-                                            default => $state,
-                                        })
-                                        ->badge()
-                                        ->color(fn (string $state): string => match($state) {
-                                            'bandeira_apolices' => 'primary',
-                                            'sistema_gestao' => 'success',
-                                            'barcaza_exclusive' => 'warning',
-                                            'empujador_exclusive' => 'info',
-                                            'motochata_exclusive' => 'secondary',
-                                            default => 'gray',
-                                        }),
-
-                                    Infolists\Components\TextEntry::make('status')
-                                        ->label('Estado')
-                                        ->state(function (VesselDocument $record): string {
-                                            return $record->getStatusText();
-                                        })
-                                        ->badge()
-                                        ->color(fn (VesselDocument $record): string => $record->getStatusColor()),
-                                ]),
-                                
-                                // Segunda fila: Detalles del archivo y acciones
-                                Infolists\Components\Grid::make(4)->schema([
-                                    Infolists\Components\TextEntry::make('file_name')
-                                        ->label('Nombre del Archivo')
-                                        ->limit(40)
-                                        ->tooltip(function (VesselDocument $record) {
-                                            return $record->file_name ?? 'Sin nombre';
-                                        }),
-                                    
-                                    Infolists\Components\TextEntry::make('file_size')
-                                        ->label('Tamaño')
-                                        ->formatStateUsing(fn (int $state): string => $state ? number_format($state / 1024 / 1024, 2) . ' MB' : ''),
-                                    
-                                    Infolists\Components\TextEntry::make('uploaded_at')
-                                        ->label('Fecha de Subida')
-                                        ->dateTime('d/m/Y H:i'),
-                                    
-                                    Infolists\Components\TextEntry::make('download_action')
-                                        ->label('Acciones')
-                                        ->state('')
-                                        ->formatStateUsing(function ($state, VesselDocument $record) {
-                                            if (!$record || !$record->file_path) {
-                                                return '<span class="text-gray-400">No disponible</span>';
-                                            }
-                                            
-                                            $url = \Illuminate\Support\Facades\Storage::url($record->file_path);
-                                            return '<a href="' . $url . '" 
-                                                    target="_blank" 
-                                                    class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                        </svg>
-                                                        Descargar
-                                                    </a>';
-                                        })
-                                        ->html(),
-                                ]),
+                                Infolists\Components\TextEntry::make('document_name')
+                                    ->label('Documento'),
+                                Infolists\Components\TextEntry::make('download_button')
+                                    ->label('Descargar')
+                                    ->state(function ($record) {
+                                        $filePath = storage_path('app/public/' . $record->file_path);
+                                        if (file_exists($filePath)) {
+                                            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($record->file_path);
+                                            return '<a href="' . $url . '" target="_blank" class="text-blue-600 hover:text-blue-800 underline">Descargar</a>';
+                                        }
+                                        return 'No disponible';
+                                    })
+                                    ->html(),
                             ])
-                            ->columns(1)
-                            ->columnSpanFull()
-                            ->placeholder('No hay documentos cargados')
-                            ->extraAttributes(['class' => 'divide-y divide-gray-200']),
-                    ])
-                    ->collapsible()
-                    ->collapsed(false)
-                    ->extraAttributes(['class' => 'max-h-96 overflow-y-auto']),
+                            ->columns(2)
+                            ->placeholder('No hay documentos'),
+                    ]),
             ]);
     }
 }
