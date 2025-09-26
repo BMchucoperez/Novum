@@ -344,6 +344,63 @@ class VesselResource extends Resource
                                         static::createExclusiveDocumentUploadGrid()
                                     ]),
                             ]),
+
+                        Tab::make('Documentos Cargados')
+                            ->icon('heroicon-o-folder')
+                            ->badge(function ($record) {
+                                return $record ? $record->vesselDocuments()->count() : 0;
+                            })
+                            ->schema([
+                                Section::make('Resumen de Documentos')
+                                    ->description('Estadísticas y resumen de documentos cargados')
+                                    ->schema([
+                                        Forms\Components\Grid::make(4)->schema([
+                                            Forms\Components\Placeholder::make('total_documents')
+                                                ->label('Total Documentos')
+                                                ->content(function ($record) {
+                                                    $count = $record ? $record->vesselDocuments()->count() : 0;
+                                                    return "<span class='text-2xl font-bold text-blue-600'>{$count}</span>";
+                                                })
+                                                ->extraAttributes(['class' => 'text-center']),
+                                            
+                                            Forms\Components\Placeholder::make('valid_documents')
+                                                ->label('Documentos Válidos')
+                                                ->content(function ($record) {
+                                                    $count = $record ? $record->vesselDocuments()->valid()->count() : 0;
+                                                    return "<span class='text-2xl font-bold text-green-600'>{$count}</span>";
+                                                })
+                                                ->extraAttributes(['class' => 'text-center']),
+                                            
+                                            Forms\Components\Placeholder::make('expired_documents')
+                                                ->label('Documentos Vencidos')
+                                                ->content(function ($record) {
+                                                    $count = $record ? $record->vesselDocuments()->expired()->count() : 0;
+                                                    $color = $count > 0 ? 'text-red-600' : 'text-gray-600';
+                                                    return "<span class='text-2xl font-bold {$color}'>{$count}</span>";
+                                                })
+                                                ->extraAttributes(['class' => 'text-center']),
+                                            
+                                            Forms\Components\Placeholder::make('completeness')
+                                                ->label('Completitud')
+                                                ->content(function ($record) {
+                                                    $percentage = $record ? $record->getDocumentCompleteness() : 0;
+                                                    $color = $percentage >= 80 ? 'text-green-600' : ($percentage >= 50 ? 'text-yellow-600' : 'text-red-600');
+                                                    return "<span class='text-2xl font-bold {$color}'>{$percentage}%</span>";
+                                                })
+                                                ->extraAttributes(['class' => 'text-center']),
+                                        ]),
+                                    ])
+                                    ->columns(2),
+
+                                Section::make('Lista de Documentos Anexos')
+                                    ->description(function ($record) {
+                                        $count = $record ? $record->vesselDocuments()->count() : 0;
+                                        return "Actualmente hay {$count} documento" . ($count !== 1 ? 's' : '') . " cargados. Haz scroll para ver todos los documentos.";
+                                    })
+                                    ->schema([
+                                        static::createDocumentsList()
+                                    ]),
+                            ]),
                     ])
                     ->extraAttributes(['class' => 'bg-white'])
                     ->contained(false)
@@ -675,9 +732,27 @@ class VesselResource extends Resource
                         ]);
 
                         if ($document && $document->file_path) {
-                            // Verificar si el archivo existe físicamente
-                            $fullPath = storage_path('app/' . $document->file_path);
-                            $fileExists = file_exists($fullPath);
+                            // Verificar si el archivo existe físicamente - probar ambas ubicaciones
+                            $publicPath = storage_path('app/public/' . $document->file_path);
+                            $privatePath = storage_path('app/' . $document->file_path);
+
+                            $fileExists = false;
+                            $fullPath = '';
+                            $diskType = '';
+
+                            // Primero probar en disco público (nueva ubicación)
+                            if (file_exists($publicPath)) {
+                                $fileExists = true;
+                                $fullPath = $publicPath;
+                                $diskType = 'public';
+                            }
+                            // Si no existe, probar en disco local (ubicación antigua)
+                            elseif (file_exists($privatePath)) {
+                                $fileExists = true;
+                                $fullPath = $privatePath;
+                                $diskType = 'local';
+                            }
+
                             $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
                             $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
 
@@ -685,12 +760,14 @@ class VesselResource extends Resource
                                 'vessel_id' => $record->id,
                                 'document_type' => $documentType,
                                 'db_file_path' => $document->file_path,
+                                'public_path_checked' => $publicPath,
+                                'private_path_checked' => $privatePath,
+                                'file_found_in' => $diskType,
                                 'full_storage_path' => $fullPath,
                                 'file_exists' => $fileExists,
                                 'file_permissions' => $filePermissions,
                                 'file_size_bytes' => $fileSize,
-                                'storage_disk' => 'local',
-                                'expected_public_url' => url('storage/' . str_replace('public/', '', $document->file_path)),
+                                'expected_public_url' => $diskType === 'public' ? url('storage/' . $document->file_path) : 'N/A (private file)',
                             ]);
 
                             // Para FileUpload, el estado debe ser un array de archivos
@@ -1109,9 +1186,27 @@ class VesselResource extends Resource
                         ]);
 
                         if ($document && $document->file_path) {
-                            // Verificar si el archivo existe físicamente
-                            $fullPath = storage_path('app/' . $document->file_path);
-                            $fileExists = file_exists($fullPath);
+                            // Verificar si el archivo existe físicamente - probar ambas ubicaciones
+                            $publicPath = storage_path('app/public/' . $document->file_path);
+                            $privatePath = storage_path('app/' . $document->file_path);
+
+                            $fileExists = false;
+                            $fullPath = '';
+                            $diskType = '';
+
+                            // Primero probar en disco público (nueva ubicación)
+                            if (file_exists($publicPath)) {
+                                $fileExists = true;
+                                $fullPath = $publicPath;
+                                $diskType = 'public';
+                            }
+                            // Si no existe, probar en disco local (ubicación antigua)
+                            elseif (file_exists($privatePath)) {
+                                $fileExists = true;
+                                $fullPath = $privatePath;
+                                $diskType = 'local';
+                            }
+
                             $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
                             $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
 
@@ -1119,12 +1214,14 @@ class VesselResource extends Resource
                                 'vessel_id' => $record->id,
                                 'document_type' => $documentType,
                                 'db_file_path' => $document->file_path,
+                                'public_path_checked' => $publicPath,
+                                'private_path_checked' => $privatePath,
+                                'file_found_in' => $diskType,
                                 'full_storage_path' => $fullPath,
                                 'file_exists' => $fileExists,
                                 'file_permissions' => $filePermissions,
                                 'file_size_bytes' => $fileSize,
-                                'storage_disk' => 'local',
-                                'expected_public_url' => url('storage/' . str_replace('public/', '', $document->file_path)),
+                                'expected_public_url' => $diskType === 'public' ? url('storage/' . $document->file_path) : 'N/A (private file)',
                             ]);
 
                             // Para FileUpload, el estado debe ser un array de archivos
@@ -1314,5 +1411,161 @@ class VesselResource extends Resource
         }
         
         return [Grid::make(2)->schema($fields)];
+    }
+
+    /**
+     * Crear lista de documentos existentes
+     */
+    protected static function createDocumentsList()
+    {
+        return Forms\Components\Repeater::make('existing_documents')
+            ->label('Documentos Existentes')
+            ->relationship('vesselDocuments')
+            ->schema([
+                // Primera fila: Información principal
+                Forms\Components\Group::make()->schema([
+                    Forms\Components\TextInput::make('document_name')
+                        ->label('Documento')
+                        ->disabled()
+                        ->formatStateUsing(fn ($state) => $state)
+                        ->extraAttributes(['style' => 'font-weight: bold;'])
+                        ->columnSpan(2),
+                    
+                    Forms\Components\TextInput::make('document_category')
+                        ->label('Categoría')
+                        ->disabled()
+                        ->formatStateUsing(fn (string $state): string => match($state) {
+                            'bandeira_apolices' => 'Bandeira e Apólices',
+                            'sistema_gestao' => 'Sistema de Gestão',
+                            'barcaza_exclusive' => 'Barcaza Exclusivo',
+                            'empujador_exclusive' => 'Empujador Exclusivo',
+                            'motochata_exclusive' => 'Motochata Exclusivo',
+                            default => $state,
+                        })
+                        ->extraAttributes(function ($state) {
+                            $colors = [
+                                'bandeira_apolices' => '#3b82f6',
+                                'sistema_gestao' => '#10b981',
+                                'barcaza_exclusive' => '#f59e0b',
+                                'empujador_exclusive' => '#06b6d4',
+                                'motochata_exclusive' => '#6b7280',
+                            ];
+                            $color = $colors[$state] ?? '#6b7280';
+                            return [
+                                'style' => "background-color: {$color}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;"
+                            ];
+                        }),
+
+                    Forms\Components\TextInput::make('status')
+                        ->label('Estado')
+                        ->disabled()
+                        ->formatStateUsing(function ($state, $record) {
+                            if (!$record) return 'Desconocido';
+                            return $record->getStatusText();
+                        })
+                        ->extraAttributes(function ($state, $record) {
+                            if (!$record) return ['style' => 'background-color: #6b7280; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;'];
+                            
+                            $color = match($record->getStatusColor()) {
+                                'success' => '#10b981',
+                                'warning' => '#f59e0b',
+                                'danger' => '#ef4444',
+                                'primary' => '#3b82f6',
+                                'info' => '#06b6d4',
+                                'secondary' => '#6b7280',
+                                default => '#6b7280',
+                            };
+                            
+                            return [
+                                'style' => "background-color: {$color}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;"
+                            ];
+                        }),
+                ])->columns(4),
+                
+                // Segunda fila: Detalles del archivo
+                Forms\Components\Group::make()->schema([
+                    Forms\Components\TextInput::make('file_name')
+                        ->label('Nombre del Archivo')
+                        ->disabled()
+                        ->formatStateUsing(fn ($state) => $state)
+                        ->hint('Haz clic en el botón de descarga para obtener el archivo')
+                        ->hintIcon('heroicon-o-information-circle')
+                        ->columnSpan(1),
+                    
+                    Forms\Components\TextInput::make('file_size')
+                        ->label('Tamaño')
+                        ->disabled()
+                        ->formatStateUsing(fn (int $state): string => $state ? number_format($state / 1024 / 1024, 2) . ' MB' : '')
+                        ->columnSpan(1),
+                    
+                    Forms\Components\TextInput::make('uploaded_at')
+                        ->label('Fecha de Subida')
+                        ->disabled()
+                        ->formatStateUsing(fn ($state): string => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y H:i') : '')
+                        ->columnSpan(1),
+                    
+                    Forms\Components\Placeholder::make('download_action')
+                        ->label('Acciones')
+                        ->content(function ($record) {
+                            if (!$record || !$record->file_path) {
+                                return 'No disponible';
+                            }
+                            
+                            // Determinar si el archivo está en disco público o privado
+                            $publicPath = storage_path('app/public/' . $record->file_path);
+                            $privatePath = storage_path('app/' . $record->file_path);
+
+                            if (file_exists($publicPath)) {
+                                $url = \Illuminate\Support\Facades\Storage::disk('public')->url($record->file_path);
+                            } elseif (file_exists($privatePath)) {
+                                $url = '#'; // No se puede acceder públicamente a archivos privados
+                            } else {
+                                $url = '#';
+                            }
+
+                            return "Ver archivo: " . basename($record->file_path);
+                        })
+                        ->extraAttributes(function ($record) {
+                            if (!$record || !$record->file_path) {
+                                return ['class' => 'text-gray-400'];
+                            }
+                            
+                            // Determinar si el archivo está en disco público o privado
+                            $publicPath = storage_path('app/public/' . $record->file_path);
+                            $privatePath = storage_path('app/' . $record->file_path);
+
+                            if (file_exists($publicPath)) {
+                                $url = \Illuminate\Support\Facades\Storage::disk('public')->url($record->file_path);
+                                return [
+                                    'style' => 'cursor: pointer; color: #059669; font-weight: 500; text-decoration: underline;',
+                                    'onclick' => "window.open('{$url}', '_blank')"
+                                ];
+                            } elseif (file_exists($privatePath)) {
+                                return [
+                                    'style' => 'cursor: not-allowed; color: #dc2626; font-weight: 500;',
+                                    'title' => 'Archivo en ubicación privada - necesita migración'
+                                ];
+                            } else {
+                                return [
+                                    'style' => 'cursor: not-allowed; color: #6b7280; font-weight: 500;',
+                                    'title' => 'Archivo no encontrado'
+                                ];
+                            }
+                        })
+                        ->columnSpan(1),
+                ])->columns(4),
+            ])
+            ->columns(1)
+            ->columnSpanFull()
+            ->disabled()
+            ->dehydrated(false)
+            ->defaultItems(0)
+            ->itemLabel(fn (array $state): ?string => $state['document_name'] ?? null)
+            ->collapsible()
+            ->cloneable(false)
+            ->reorderable(false)
+            ->addable(false)
+            ->deletable(false)
+            ->extraAttributes(['style' => 'max-height: 600px; overflow-y: auto;']);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\VesselResource\Pages;
 
 use App\Filament\Resources\VesselResource;
 use App\Models\VesselAssociation;
+use App\Models\VesselDocument;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
