@@ -393,32 +393,38 @@ class ChecklistInspectionResource extends Resource
                                             'md' => 2,
                                         ])
                                             ->schema([
-                                                Forms\Components\Checkbox::make('cumple')
+                                                Forms\Components\Checkbox::make('checkbox_1')
                                                     ->label('✅ Cumple')
                                                     ->inline(true)
                                                     ->live()
                                                     ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
-                                                        // Si se marca "Cumple", desmarcar "No Cumple" y calcular estado
+                                                        // Si se marca "Cumple", desmarcar "No Cumple" y establecer estado APTO
                                                         if ($state === true) {
-                                                            $set('no_cumple', false);
-                                                            $set('estado', 'A');
+                                                            $set('checkbox_2', false);
+                                                            $set('estado', 'A'); // A = APTO
+                                                        } elseif ($state === false && !$get('checkbox_2')) {
+                                                            // Si se desmarca y el otro tampoco está marcado, limpiar estado
+                                                            $set('estado', '');
                                                         }
                                                     }),
 
-                                                Forms\Components\Checkbox::make('no_cumple')
+                                                Forms\Components\Checkbox::make('checkbox_2')
                                                     ->label('❌ No Cumple')
                                                     ->inline(true)
                                                     ->live()
                                                     ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
-                                                        // Si se marca "No Cumple", desmarcar "Cumple" y calcular estado
+                                                        // Si se marca "No Cumple", desmarcar "Cumple" y calcular estado según prioridad
                                                         if ($state === true) {
-                                                            $set('cumple', false);
+                                                            $set('checkbox_1', false);
                                                             $prioridad = $get('prioridad') ?? 3;
                                                             if ($prioridad === 1) {
-                                                                $set('estado', 'N');
+                                                                $set('estado', 'N'); // N = NO APTO (Prioridad 1)
                                                             } else {
-                                                                $set('estado', 'O');
+                                                                $set('estado', 'O'); // O = OBSERVADO (Prioridad 2-3)
                                                             }
+                                                        } elseif ($state === false && !$get('checkbox_1')) {
+                                                            // Si se desmarca y el otro tampoco está marcado, limpiar estado
+                                                            $set('estado', '');
                                                         }
                                                     }),
                                             ]),
@@ -433,15 +439,19 @@ class ChecklistInspectionResource extends Resource
                                 // Estado con colores
                                 Forms\Components\Select::make('estado')
                                     ->label('📊 Estado de Evaluación')
-                                    ->options(ChecklistInspection::getStatusOptions())
+                                    ->options([
+                                        'A' => 'APTO - Cumple con los requisitos',
+                                        'N' => 'NO APTO - No cumple (Prioridad 1)',
+                                        'O' => 'OBSERVADO - No cumple (Prioridad 2-3)',
+                                    ])
                                     ->prefixIcon('heroicon-o-flag')
                                     ->placeholder('Seleccione el estado...')
                                     ->disabled(function (Forms\Get $get) {
                                         // Deshabilitar si algún checkbox está marcado (estado automático)
-                                        return $get('cumple') === true || $get('no_cumple') === true;
+                                        return $get('checkbox_1') === true || $get('checkbox_2') === true;
                                     })
                                     ->helperText(function (Forms\Get $get) {
-                                        if ($get('cumple') === true || $get('no_cumple') === true) {
+                                        if ($get('checkbox_1') === true || $get('checkbox_2') === true) {
                                             return '✓ Estado establecido automáticamente según evaluación';
                                         }
                                         return 'Seleccione el estado correspondiente o use los checkboxes de evaluación';
@@ -749,7 +759,12 @@ class ChecklistInspectionResource extends Resource
                         'warning' => ['O'],
                         'danger' => ['N'],
                     ])
-                    ->formatStateUsing(fn (string $state): string => ChecklistInspection::getOverallStatusOptions()[$state] ?? $state),
+                    ->formatStateUsing(fn (string $state): string => match($state) {
+                        'A' => 'APTO',
+                        'N' => 'NO APTO',
+                        'O' => 'OBSERVADO',
+                        default => $state
+                    }),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
@@ -827,7 +842,11 @@ class ChecklistInspectionResource extends Resource
 
                 Tables\Filters\SelectFilter::make('overall_status')
                     ->label('Estado')
-                    ->options(ChecklistInspection::getOverallStatusOptions()),
+                    ->options([
+                        'A' => 'APTO - Conforme General',
+                        'N' => 'NO APTO - No Conforme Crítico',
+                        'O' => 'OBSERVADO - Conforme con Observaciones',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
