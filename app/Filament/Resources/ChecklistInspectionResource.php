@@ -401,7 +401,7 @@ class ChecklistInspectionResource extends Resource
                                                         // Si se marca "Cumple", desmarcar "No Cumple" y calcular estado
                                                         if ($state === true) {
                                                             $set('no_cumple', false);
-                                                            $set('estado', 'APTO');
+                                                            $set('estado', 'A');
                                                         }
                                                     }),
 
@@ -415,9 +415,9 @@ class ChecklistInspectionResource extends Resource
                                                             $set('cumple', false);
                                                             $prioridad = $get('prioridad') ?? 3;
                                                             if ($prioridad === 1) {
-                                                                $set('estado', 'NO APTO');
+                                                                $set('estado', 'N');
                                                             } else {
-                                                                $set('estado', 'OBSERVADO');
+                                                                $set('estado', 'O');
                                                             }
                                                         }
                                                     }),
@@ -745,9 +745,9 @@ class ChecklistInspectionResource extends Resource
                 Tables\Columns\BadgeColumn::make('overall_status')
                     ->label('Estado')
                     ->colors([
-                        'success' => ['V', 'APTO'],
-                        'warning' => ['A', 'OBSERVADO'],
-                        'danger' => ['N', 'R', 'NO APTO'],
+                        'success' => ['A'],
+                        'warning' => ['O'],
+                        'danger' => ['N'],
                     ])
                     ->formatStateUsing(fn (string $state): string => ChecklistInspection::getOverallStatusOptions()[$state] ?? $state),
 

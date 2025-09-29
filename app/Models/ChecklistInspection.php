@@ -455,10 +455,6 @@ class ChecklistInspection extends Model
             'APTO' => 'APTO - Cumple con los requisitos',
             'NO APTO' => 'NO APTO - No cumple (Prioridad 1)',
             'OBSERVADO' => 'OBSERVADO - No cumple (Prioridad 2-3)',
-            'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
-            'A' => 'A - En trámite (operativo con observaciones menores)',
-            'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
-            'R' => 'R - Vencido (inoperativo, no cumple, observaciones críticas)',
         ];
     }
 
