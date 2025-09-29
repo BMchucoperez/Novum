@@ -452,6 +452,9 @@ class ChecklistInspection extends Model
     public static function getStatusOptions(): array
     {
         return [
+            'APTO' => 'APTO - Cumple con los requisitos',
+            'NO APTO' => 'NO APTO - No cumple (Prioridad 1)',
+            'OBSERVADO' => 'OBSERVADO - No cumple (Prioridad 2-3)',
             'V' => 'V - Vigente (100% operativo, cumple, buenas condiciones)',
             'A' => 'A - En trámite (operativo con observaciones menores)',
             'N' => 'N - Reparaciones (observaciones que comprometen estanqueidad)',
@@ -465,10 +468,13 @@ class ChecklistInspection extends Model
     public static function getStatusColors(): array
     {
         return [
-            'V' => 'success',    // Verde
-            'A' => 'warning',    // Amarillo
-            'N' => 'danger',     // Naranja (usando danger como aproximación)
-            'R' => 'danger',     // Rojo
+            'APTO' => 'success',        // Verde
+            'NO APTO' => 'danger',      // Rojo
+            'OBSERVADO' => 'warning',   // Amarillo
+            'V' => 'success',           // Verde
+            'A' => 'warning',           // Amarillo
+            'N' => 'danger',            // Naranja (usando danger como aproximación)
+            'R' => 'danger',            // Rojo
         ];
     }
 
@@ -478,6 +484,9 @@ class ChecklistInspection extends Model
     public static function getOverallStatusOptions(): array
     {
         return [
+            'APTO' => 'APTO - Conforme General',
+            'NO APTO' => 'NO APTO - No Conforme Crítico',
+            'OBSERVADO' => 'OBSERVADO - Conforme con Observaciones',
             'V' => 'V - Conforme General',
             'A' => 'A - Conforme con Observaciones',
             'N' => 'N - No Conforme con Reparaciones',
@@ -533,18 +542,17 @@ class ChecklistInspection extends Model
             }
         }
         if (empty($allEstados)) {
-            return 'A'; // Por defecto si no hay estados
+            return 'APTO'; // Por defecto si no hay estados
         }
-        if (in_array('R', $allEstados, true)) {
-            return 'R';
+        
+        // Prioridad de estados: NO APTO > OBSERVADO > APTO
+        if (in_array('NO APTO', $allEstados, true) || in_array('R', $allEstados, true)) {
+            return 'NO APTO';
         }
-        if (in_array('N', $allEstados, true)) {
-            return 'N';
+        if (in_array('OBSERVADO', $allEstados, true) || in_array('N', $allEstados, true) || in_array('A', $allEstados, true)) {
+            return 'OBSERVADO';
         }
-        if (in_array('A', $allEstados, true)) {
-            return 'A';
-        }
-        return 'V';
+        return 'APTO';
     }
 
     /**

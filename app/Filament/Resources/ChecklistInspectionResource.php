@@ -393,32 +393,33 @@ class ChecklistInspectionResource extends Resource
                                             'md' => 2,
                                         ])
                                             ->schema([
-                                                Forms\Components\Checkbox::make('checkbox_1')
-                                                    ->label('¿Cumple?')
-                                                    ->inline(true),
-
-                                                Forms\Components\Checkbox::make('checkbox_2')
-                                                    ->label('¿Cumple la inspección?')
+                                                Forms\Components\Checkbox::make('cumple')
+                                                    ->label('✅ Cumple')
                                                     ->inline(true)
-                                                    ->disabled(function () {
-                                                        return auth()->user()->hasRole('Armador');
-                                                    })
                                                     ->live()
-                                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                                        // Si checkbox_2 está marcado, establecer estado a V automáticamente
+                                                    ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
+                                                        // Si se marca "Cumple", desmarcar "No Cumple" y calcular estado
                                                         if ($state === true) {
-                                                            $set('estado', 'V');
+                                                            $set('no_cumple', false);
+                                                            $set('estado', 'APTO');
                                                         }
-                                                        // Si se desmarca, limpiar el estado para permitir selección manual
-                                                        elseif ($state === false) {
-                                                            $set('estado', null);
+                                                    }),
+
+                                                Forms\Components\Checkbox::make('no_cumple')
+                                                    ->label('❌ No Cumple')
+                                                    ->inline(true)
+                                                    ->live()
+                                                    ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
+                                                        // Si se marca "No Cumple", desmarcar "Cumple" y calcular estado
+                                                        if ($state === true) {
+                                                            $set('cumple', false);
+                                                            $prioridad = $get('prioridad') ?? 3;
+                                                            if ($prioridad === 1) {
+                                                                $set('estado', 'NO APTO');
+                                                            } else {
+                                                                $set('estado', 'OBSERVADO');
+                                                            }
                                                         }
-                                                    })
-                                                    ->helperText(function () {
-                                                        if (auth()->user()->hasRole('Armador')) {
-                                                            return '🔒 Solo el inspector';
-                                                        }
-                                                        //return 'ℹ️ Al marcar esta casilla, el estado se establecerá automáticamente como "V - Vigente"';
                                                     }),
                                             ]),
                                     ])
@@ -436,21 +437,14 @@ class ChecklistInspectionResource extends Resource
                                     ->prefixIcon('heroicon-o-flag')
                                     ->placeholder('Seleccione el estado...')
                                     ->disabled(function (Forms\Get $get) {
-                                        // Deshabilitar si el usuario es Armador
-                                        if (auth()->user()->hasRole('Armador')) {
-                                            return true;
-                                        }
-                                        // Deshabilitar si checkbox_2 está marcado (estado automático V)
-                                        return $get('checkbox_2') === true;
+                                        // Deshabilitar si algún checkbox está marcado (estado automático)
+                                        return $get('cumple') === true || $get('no_cumple') === true;
                                     })
                                     ->helperText(function (Forms\Get $get) {
-                                        if (auth()->user()->hasRole('Armador')) {
-                                            return '🔒 Solo el inspector';
+                                        if ($get('cumple') === true || $get('no_cumple') === true) {
+                                            return '✓ Estado establecido automáticamente según evaluación';
                                         }
-                                        if ($get('checkbox_2') === true) {
-                                            return '✓ Estado establecido automáticamente';
-                                        }
-                                        return 'Seleccione el estado correspondiente';
+                                        return 'Seleccione el estado correspondiente o use los checkboxes de evaluación';
                                     })
                                     ->columnSpan([
                                         'default' => 1,
@@ -751,9 +745,9 @@ class ChecklistInspectionResource extends Resource
                 Tables\Columns\BadgeColumn::make('overall_status')
                     ->label('Estado')
                     ->colors([
-                        'success' => 'V',
-                        'warning' => 'A',
-                        'danger' => ['N', 'R'],
+                        'success' => ['V', 'APTO'],
+                        'warning' => ['A', 'OBSERVADO'],
+                        'danger' => ['N', 'R', 'NO APTO'],
                     ])
                     ->formatStateUsing(fn (string $state): string => ChecklistInspection::getOverallStatusOptions()[$state] ?? $state),
 
