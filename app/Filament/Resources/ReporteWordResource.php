@@ -1074,13 +1074,7 @@ class ReporteWordResource extends Resource
             $footerTable = $footer->addTable();
             $footerTable->addRow();
             $footerTable->addCell(5000)->addText('Documento generado automáticamente', 'emphasisStyle');
-            
-            // Crear celda para paginación con formato correcto
-            $paginationCell = $footerTable->addCell(5000);
-            $paginationCell->addText('Página ', 'emphasisStyle', ['alignment' => 'right']);
-            $paginationCell->addField('PAGE', 'emphasisStyle', ['alignment' => 'right']);
-            $paginationCell->addText(' de ', 'emphasisStyle', ['alignment' => 'right']);
-            $paginationCell->addField('NUMPAGES', 'emphasisStyle', ['alignment' => 'right']);
+            $footerTable->addCell(5000)->addPreserveText('Página {PAGE} de {NUMPAGES}', 'emphasisStyle', ['alignment' => 'right']);
             
             // 5. Guardar usando IOFactory con configuración robusta
             try {
