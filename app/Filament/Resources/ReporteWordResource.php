@@ -541,13 +541,13 @@ class ReporteWordResource extends Resource
             // Convertir el estado general a su descripción completa según las especificaciones
             $estadoGeneral = $inspection->overall_status ?? 'APTO';
             $estadoGeneralDescripcion = match($estadoGeneral) {
-                'APTO' => 'APTO - Cumple con los requisitos',
-                'NO APTO' => 'NO APTO - No cumple (Prioridad 1)',
-                'OBSERVADO' => 'OBSERVADO - No cumple (Prioridad 2-3)',
-                'V' => 'APTO - Cumple con los requisitos', // Compatibilidad con códigos antiguos
-                'A' => 'OBSERVADO - No cumple (Prioridad 2-3)',
-                'N' => 'OBSERVADO - No cumple (Prioridad 2-3)', 
-                'R' => 'NO APTO - No cumple (Prioridad 1)',
+                'APTO' => 'APTO',
+                'NO APTO' => 'NO APTO',
+                'OBSERVADO' => 'OBSERVADO',
+                'V' => 'APTO', // Compatibilidad con códigos antiguos
+                'A' => 'OBSERVADO',
+                'N' => 'OBSERVADO', 
+                'R' => 'NO APTO',
                 default => $estadoGeneral
             };
             
