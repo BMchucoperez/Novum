@@ -2,24 +2,24 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ReporteWordResource\Pages;
-use App\Models\ReporteWord;
-use App\Models\ChecklistInspection;
-use App\Models\Owner;
-use App\Models\Vessel;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
+use Illuminate\Support\Str;
+use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
+use App\Models\ChecklistInspection;
+use App\Models\ReporteWord;
+use App\Models\Owner;
+use App\Models\Vessel;
+use Illuminate\Support\Facades\Log;
+use App\Filament\Resources\ReporteWordResource\Pages;
 
 class ReporteWordResource extends Resource
 {
@@ -135,10 +135,10 @@ class ReporteWordResource extends Resource
                                 $reporteWord->save();
                                 
                                 // Mostrar notificación de éxito
-                                Notification::make()
-                                    ->success()
+                                \Filament\Notifications\Notification::make()
                                     ->title('Reporte generado exitosamente')
                                     ->body('El reporte Word ha sido generado y guardado correctamente.')
+                                    ->success()
                                     ->send();
                                 
                                 // Redireccionar al índice
@@ -151,10 +151,10 @@ class ReporteWordResource extends Resource
                                     'trace' => $e->getTraceAsString()
                                 ]);
                                 
-                                Notification::make()
-                                    ->danger()
+                                \Filament\Notifications\Notification::make()
                                     ->title('Error al generar el reporte')
                                     ->body('Ocurrió un error: ' . $e->getMessage())
+                                    ->danger()
                                     ->send();
                             }
                         })
@@ -538,6 +538,8 @@ class ReporteWordResource extends Resource
             $infoTable->addCell(7000, ['bgColor' => $colorScheme['primary']])->addText('Información', 'whiteStyle');
             
             // Datos de la inspección
+            // Usamos directamente el valor de overall_status que ya contiene los valores correctos
+            // según la lógica de ChecklistInspection::calculateOverallStatus()
             $infoData = [
                 'Propietario' => htmlspecialchars($inspection->owner->name, ENT_QUOTES, 'UTF-8'),
                 'Embarcación' => htmlspecialchars($inspection->vessel->name, ENT_QUOTES, 'UTF-8'),
@@ -677,38 +679,72 @@ class ReporteWordResource extends Resource
                     $estadoFont = 'normalStyle';
                     $estadoDescripcion = $estadoText;
                     
-                    // Mapear estados según el sistema real
+                    // Convertir estado según la lógica del checklist
+                    $estadoFinal = '';
                     switch (strtoupper(trim($estadoText))) {
                         case 'V':
+                            $estadoFinal = 'APTO';
                             $estadoColor = $colorScheme['success'];
                             $estadoFont = 'whiteStyle';
-                            $estadoDescripcion = 'V - Conforme';
                             break;
                         case 'A':
+                            $estadoFinal = 'OBSERVADO';
                             $estadoColor = $colorScheme['warning'];
-                            $estadoDescripcion = 'A - Con Observaciones';
                             break;
                         case 'N':
+                            $estadoFinal = 'OBSERVADO';
                             $estadoColor = $colorScheme['danger'];
                             $estadoFont = 'whiteStyle';
-                            $estadoDescripcion = 'N - No Conforme';
                             break;
                         case 'R':
+                            $estadoFinal = 'NO APTO';
                             $estadoColor = $colorScheme['danger'];
                             $estadoFont = 'whiteStyle';
-                            $estadoDescripcion = 'R - Rechazado';
+                            break;
+                        case 'APTO':
+                            $estadoFinal = 'APTO';
+                            $estadoColor = $colorScheme['success'];
+                            $estadoFont = 'whiteStyle';
+                            break;
+                        case 'OBSERVADO':
+                            $estadoFinal = 'OBSERVADO';
+                            $estadoColor = $colorScheme['warning'];
+                            break;
+                        case 'NO APTO':
+                            $estadoFinal = 'NO APTO';
+                            $estadoColor = $colorScheme['danger'];
+                            $estadoFont = 'whiteStyle';
                             break;
                         case 'VERIFICADO':
+                            $estadoFinal = 'Verificado';
                             $estadoColor = $colorScheme['accent'];
-                            $estadoDescripcion = 'Verificado';
                             break;
                         case 'SIN EVALUAR':
                         case '':
+                            $estadoFinal = 'Sin evaluar';
                             $estadoColor = $colorScheme['lightGray'];
+                            break;
+                        default:
+                            $estadoFinal = htmlspecialchars($estadoText, ENT_QUOTES, 'UTF-8');
+                            $estadoColor = $colorScheme['lightGray'];
+                    }
+                    
+                    // Formatear la descripción del estado según las especificaciones
+                    switch ($estadoFinal) {
+                        case 'APTO':
+                            $estadoDescripcion = 'APTO - Cumple con los requisitos';
+                            break;
+                        case 'NO APTO':
+                            $estadoDescripcion = 'NO APTO - No cumple (Prioridad 1)';
+                            break;
+                        case 'OBSERVADO':
+                            $estadoDescripcion = 'OBSERVADO - No cumple (Prioridad 2-3)';
+                            break;
+                        case 'Sin evaluar':
                             $estadoDescripcion = 'Sin evaluar';
                             break;
                         default:
-                            $estadoDescripcion = htmlspecialchars($estadoText, ENT_QUOTES, 'UTF-8');
+                            $estadoDescripcion = $estadoFinal;
                     }
                     
                     // Determinar color y texto de prioridad
@@ -830,11 +866,42 @@ class ReporteWordResource extends Resource
                                 }
                             }
                             
+                            // Convertir estado a valor final usando la misma lógica
+                            $estadoFinal = '';
+                            switch (strtoupper(trim($estadoText))) {
+                                case 'V':
+                                    $estadoFinal = 'APTO';
+                                    break;
+                                case 'A':
+                                    $estadoFinal = 'OBSERVADO';
+                                    break;
+                                case 'N':
+                                    $estadoFinal = 'OBSERVADO';
+                                    break;
+                                case 'R':
+                                    $estadoFinal = 'NO APTO';
+                                    break;
+                                case 'APTO':
+                                case 'OBSERVADO':
+                                case 'NO APTO':
+                                    $estadoFinal = strtoupper(trim($estadoText));
+                                    break;
+                                case 'VERIFICADO':
+                                    $estadoFinal = 'Verificado';
+                                    break;
+                                case 'SIN EVALUAR':
+                                case '':
+                                    $estadoFinal = 'Sin evaluar';
+                                    break;
+                                default:
+                                    $estadoFinal = 'APTO'; // Valor por defecto
+                            }
+                            
                             $prioridad = $item['prioridad'] ?? 3;
                             $archivos = $item['archivos_adjuntos'] ?? [];
                             
-                            // Contar estados correctamente
-                            $estadosCounts[$estadoText] = ($estadosCounts[$estadoText] ?? 0) + 1;
+                            // Contar estados correctamente usando el valor final
+                            $estadosCounts[$estadoFinal] = ($estadosCounts[$estadoFinal] ?? 0) + 1;
                             $prioridadesCounts[$prioridad] = ($prioridadesCounts[$prioridad] ?? 0) + 1;
                             
                             // Contar archivos válidos
@@ -874,26 +941,77 @@ class ReporteWordResource extends Resource
             $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText('Total de Ítems Inspeccionados', 'subHeaderStyle');
             $resumenTable->addCell(5000)->addText($totalItems . ' ítems', 'normalStyle');
             
-            // Estados (incluyendo los nuevos estados detectados)
-            foreach (['V' => 'Conforme', 'A' => 'Con Observaciones', 'N' => 'No Conforme', 'R' => 'Rechazado', 'Verificado' => 'Verificado', 'Sin evaluar' => 'Sin Evaluar'] as $codigo => $descripcion) {
-                $cantidad = $estadosCounts[$codigo] ?? 0;
+            // Función auxiliar para convertir estados individuales a valores finales
+            $convertEstadoToFinal = function($estado) {
+                $estado = strtoupper(trim($estado));
                 
+                // Aplicar la misma lógica que en ChecklistInspection::calculateOverallStatus()
+                switch ($estado) {
+                    case 'NO APTO':
+                    case 'R':
+                        return 'NO APTO';
+                    case 'OBSERVADO':
+                    case 'N':
+                    case 'A':
+                        return 'OBSERVADO';
+                    case 'APTO':
+                    case 'V':
+                    case 'VERIFICADO':
+                        return 'APTO';
+                    case 'SIN EVALUAR':
+                    case '':
+                        return 'Sin evaluar';
+                    default:
+                        return 'APTO';
+                }
+            };
+            
+            // Estados finales con descripciones
+            $estadoDescripciones = [
+                'APTO' => 'Cumple con los requisitos',
+                'OBSERVADO' => 'No cumple (Prioridad 2-3)',
+                'NO APTO' => 'No cumple (Prioridad 1)',
+                'Sin evaluar' => 'Sin Evaluar'
+            ];
+            
+            // Estados finales con descripciones
+            $estadoDescripciones = [
+                'APTO' => 'Cumple con los requisitos',
+                'OBSERVADO' => 'No cumple (Prioridad 2-3)',
+                'NO APTO' => 'No cumple (Prioridad 1)'
+            ];
+            
+            // Agrupar estados por valores finales
+            $finalEstadosCounts = [
+                'APTO' => 0,
+                'OBSERVADO' => 0,
+                'NO APTO' => 0,
+                'Sin evaluar' => 0
+            ];
+            
+            foreach ($estadosCounts as $estado => $cantidad) {
+                $finalEstado = $convertEstadoToFinal($estado);
+                $finalEstadosCounts[$finalEstado] += $cantidad;
+            }
+            
+            // Mostrar estados finales
+            foreach ($finalEstadosCounts as $finalEstado => $cantidad) {
                 // Solo mostrar estados que tienen al menos 1 item
                 if ($cantidad > 0) {
                     $porcentaje = $totalItems > 0 ? round(($cantidad / $totalItems) * 100, 1) : 0;
+                    $descripcion = $estadoDescripciones[$finalEstado] ?? $finalEstado;
                     
                     $colorFondo = $colorScheme['lightGray'];
                     $fontStyle = 'normalStyle';
-                    switch ($codigo) {
-                        case 'V': 
+                    switch ($finalEstado) {
+                        case 'APTO': 
                             $colorFondo = $colorScheme['success']; 
                             $fontStyle = 'whiteStyle';
                             break;
-                        case 'A': 
+                        case 'OBSERVADO': 
                             $colorFondo = $colorScheme['warning']; 
                             break;
-                        case 'N':
-                        case 'R': 
+                        case 'NO APTO': 
                             $colorFondo = $colorScheme['danger'];
                             $fontStyle = 'whiteStyle';
                             break;
@@ -903,7 +1021,7 @@ class ReporteWordResource extends Resource
                     }
                     
                     $resumenTable->addRow();
-                    $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText("Estado {$codigo} - {$descripcion}", 'subHeaderStyle');
+                    $resumenTable->addCell(5000, ['bgColor' => $colorScheme['lightGray']])->addText("Estado {$finalEstado} - {$descripcion}", 'subHeaderStyle');
                     $resumenTable->addCell(5000, ['bgColor' => $colorFondo])->addText("{$cantidad} ({$porcentaje}%)", $fontStyle);
                 }
             }
