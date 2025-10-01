@@ -716,8 +716,9 @@ class ReporteWordResource extends Resource
                             $estadoFont = 'whiteStyle';
                             break;
                         case 'VERIFICADO':
-                            $estadoFinal = 'Verificado';
-                            $estadoColor = $colorScheme['accent'];
+                            $estadoFinal = 'APTO';
+                            $estadoColor = $colorScheme['success'];
+                            $estadoFont = 'whiteStyle';
                             break;
                         case 'SIN EVALUAR':
                         case '':
@@ -887,7 +888,7 @@ class ReporteWordResource extends Resource
                                     $estadoFinal = strtoupper(trim($estadoText));
                                     break;
                                 case 'VERIFICADO':
-                                    $estadoFinal = 'Verificado';
+                                    $estadoFinal = 'APTO';
                                     break;
                                 case 'SIN EVALUAR':
                                 case '':
@@ -972,13 +973,6 @@ class ReporteWordResource extends Resource
                 'OBSERVADO' => 'No cumple (Prioridad 2-3)',
                 'NO APTO' => 'No cumple (Prioridad 1)',
                 'Sin evaluar' => 'Sin Evaluar'
-            ];
-            
-            // Estados finales con descripciones
-            $estadoDescripciones = [
-                'APTO' => 'Cumple con los requisitos',
-                'OBSERVADO' => 'No cumple (Prioridad 2-3)',
-                'NO APTO' => 'No cumple (Prioridad 1)'
             ];
             
             // Agrupar estados por valores finales
@@ -1080,7 +1074,13 @@ class ReporteWordResource extends Resource
             $footerTable = $footer->addTable();
             $footerTable->addRow();
             $footerTable->addCell(5000)->addText('Documento generado automáticamente', 'emphasisStyle');
-            $footerTable->addCell(5000)->addText('Página {PAGE} de {NUMPAGES}', 'emphasisStyle', ['alignment' => 'right']);
+            
+            // Crear celda para paginación con formato correcto
+            $paginationCell = $footerTable->addCell(5000);
+            $paginationCell->addText('Página ', 'emphasisStyle', ['alignment' => 'right']);
+            $paginationCell->addField('PAGE', 'emphasisStyle', ['alignment' => 'right']);
+            $paginationCell->addText(' de ', 'emphasisStyle', ['alignment' => 'right']);
+            $paginationCell->addField('NUMPAGES', 'emphasisStyle', ['alignment' => 'right']);
             
             // 5. Guardar usando IOFactory con configuración robusta
             try {
