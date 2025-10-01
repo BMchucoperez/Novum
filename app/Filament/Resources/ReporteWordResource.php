@@ -538,15 +538,26 @@ class ReporteWordResource extends Resource
             $infoTable->addCell(7000, ['bgColor' => $colorScheme['primary']])->addText('Información', 'whiteStyle');
             
             // Datos de la inspección
-            // Usamos directamente el valor de overall_status que ya contiene los valores correctos
-            // según la lógica de ChecklistInspection::calculateOverallStatus()
+            // Convertir el estado general a su descripción completa según las especificaciones
+            $estadoGeneral = $inspection->overall_status ?? 'APTO';
+            $estadoGeneralDescripcion = match($estadoGeneral) {
+                'APTO' => 'APTO - Cumple con los requisitos',
+                'NO APTO' => 'NO APTO - No cumple (Prioridad 1)',
+                'OBSERVADO' => 'OBSERVADO - No cumple (Prioridad 2-3)',
+                'V' => 'APTO - Cumple con los requisitos', // Compatibilidad con códigos antiguos
+                'A' => 'OBSERVADO - No cumple (Prioridad 2-3)',
+                'N' => 'OBSERVADO - No cumple (Prioridad 2-3)', 
+                'R' => 'NO APTO - No cumple (Prioridad 1)',
+                default => $estadoGeneral
+            };
+            
             $infoData = [
                 'Propietario' => htmlspecialchars($inspection->owner->name, ENT_QUOTES, 'UTF-8'),
                 'Embarcación' => htmlspecialchars($inspection->vessel->name, ENT_QUOTES, 'UTF-8'),
                 'Inspector' => htmlspecialchars($inspection->inspector_name, ENT_QUOTES, 'UTF-8'),
                 'Fecha de Inicio' => $inspection->inspection_start_date->format('d/m/Y'),
                 'Fecha de Fin' => $inspection->inspection_end_date ? $inspection->inspection_end_date->format('d/m/Y') : 'N/A',
-                'Estado General' => htmlspecialchars($inspection->overall_status ?? 'N/A', ENT_QUOTES, 'UTF-8')
+                'Estado General' => htmlspecialchars($estadoGeneralDescripcion, ENT_QUOTES, 'UTF-8')
             ];
             
             foreach ($infoData as $field => $value) {
