@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\VesselDocument;
 use App\Models\ReporteWord;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class DocumentController extends Controller
 {
@@ -19,7 +20,7 @@ class DocumentController extends Controller
         }
         
         // Descargar el archivo usando el Storage facade
-        return Storage::disk('local')->download($document->file_path, $document->file_name);
+        return response()->download(storage_path('app/' . $document->file_path), $document->file_name);
     }
     
     public function downloadReporteWord($id)
@@ -50,11 +51,13 @@ class DocumentController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             abort(404, 'El reporte solicitado no existe.');
         } catch (\Exception $e) {
-            \Log::error('Error descargando reporte Word:', [
+            Log::error('Error descargando reporte Word:', [
                 'reporte_id' => $id,
                 'error' => $e->getMessage()
             ]);
             abort(500, 'Error al descargar: ' . $e->getMessage());
         }
     }
+    
+ 
 }

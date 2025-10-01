@@ -23,3 +23,7 @@ Route::get('/upload-test', function () {
 
 // Route for downloading vessel documents
 Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->name('documents.download');
+
+// Route for downloading reporte words
+Route::get('/reporte-word/download/{id}', [DocumentController::class, 'downloadReporteWord'])->name('reporte-word.download');
+
