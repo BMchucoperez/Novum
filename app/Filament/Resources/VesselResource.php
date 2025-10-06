@@ -699,7 +699,7 @@ class VesselResource extends Resource
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
                         if ($document && $document->file_path) {
-                            $set($state, [$document->file_path]);
+                            $set("document_{$documentType}", [$document->file_path]);
                         }
                     }
                 })
