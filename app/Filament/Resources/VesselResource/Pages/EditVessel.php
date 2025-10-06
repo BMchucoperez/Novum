@@ -28,18 +28,60 @@ class EditVessel extends EditRecord
 
     protected function beforeSave(): void
     {
-        Log::info('✏️ ========== FORM DATA SUBMITTED - EDIT ==========', [
+        Log::info('💾 ========== BOTÓN GUARDAR PRESIONADO ==========', [
             'action' => 'EDIT_VESSEL',
             'vessel_id' => $this->record->id,
             'vessel_name' => $this->record->name,
             'user_id' => auth()->id(),
-            'user_email' => auth()->user()?->email,
             'timestamp' => now()->toDateTimeString(),
-            'request_ip' => request()->ip(),
-            'request_user_agent' => request()->userAgent(),
             'form_data_count' => count($this->data),
-            'memory_usage' => memory_get_usage(true),
-            'current_updated_at' => $this->record->updated_at->toDateTimeString(),
+        ]);
+
+        // Log específico de campos de documentos para rastrear archivos PDF
+        $documentFields = array_filter($this->data, function($key) {
+            return str_starts_with($key, 'document_');
+        }, ARRAY_FILTER_USE_KEY);
+
+        Log::info('📄 ARCHIVOS PDF EN FORMULARIO AL GUARDAR', [
+            'vessel_id' => $this->record->id,
+            'document_fields_count' => count($documentFields),
+            'document_details' => array_map(function($files, $key) {
+                $details = [
+                    'field' => $key,
+                    'has_content' => !empty($files),
+                    'type' => gettype($files),
+                ];
+                
+                if (is_array($files)) {
+                    $details['files_count'] = count($files);
+                    $details['files_info'] = array_map(function($file, $index) {
+                        if (is_object($file)) {
+                            return [
+                                'index' => $index,
+                                'is_temporary' => true,
+                                'class' => get_class($file),
+                                'original_name' => method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
+                                'size' => method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
+                            ];
+                        } else {
+                            return [
+                                'index' => $index,
+                                'is_temporary' => false,
+                                'is_string' => is_string($file),
+                                'value' => is_string($file) ? basename($file) : 'unknown_type',
+                            ];
+                        }
+                    }, $files, array_keys($files));
+                } elseif (!empty($files)) {
+                    $details['single_file'] = [
+                        'is_object' => is_object($files),
+                        'is_string' => is_string($files),
+                        'value' => is_string($files) ? basename($files) : (is_object($files) ? get_class($files) : 'unknown'),
+                    ];
+                }
+                
+                return $details;
+            }, $documentFields, array_keys($documentFields))
         ]);
 
         // Log todos los datos del formulario principales
@@ -130,22 +172,40 @@ class EditVessel extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::info('✏️ ========== EDITVESSEL AFTERSAVE INICIADO ==========', [
+        Log::info('✏️ ========== PROCESANDO DESPUÉS DE GUARDAR ==========', [
             'vessel_id' => $this->record->id,
             'vessel_name' => $this->record->name,
-            'vessel_type' => $this->record->vessel_type,
-            'form_data_count' => count($this->data),
-            'memory_usage' => memory_get_usage(true),
             'timestamp' => now()->toDateTimeString(),
-            'user_id' => auth()->id(),
-            'request_id' => request()->ip() . '_' . time(),
-            'updated_at' => $this->record->updated_at->toDateTimeString(),
+        ]);
+
+        // Verificar qué documentos existen actualmente en BD
+        $existingDocuments = VesselDocument::where('vessel_id', $this->record->id)->get();
+        
+        Log::info('📄 DOCUMENTOS EXISTENTES EN BD ANTES DE PROCESAR', [
+            'vessel_id' => $this->record->id,
+            'existing_documents_count' => $existingDocuments->count(),
+            'existing_documents' => $existingDocuments->map(function($doc) {
+                return [
+                    'id' => $doc->id,
+                    'document_type' => $doc->document_type,
+                    'file_name' => $doc->file_name,
+                    'created_at' => $doc->created_at->toDateTimeString(),
+                ];
+            })->toArray()
         ]);
 
         // Log completo de todos los datos del formulario relevantes para edición
         $documentFields = array_filter($this->data, function($key) {
             return str_starts_with($key, 'document_');
         }, ARRAY_FILTER_USE_KEY);
+
+        Log::info('📄 DOCUMENTOS A PROCESAR EN AFTERSAVE', [
+            'vessel_id' => $this->record->id,
+            'document_fields_count' => count($documentFields),
+            'document_fields_with_content' => array_filter($documentFields, function($files) {
+                return !empty($files);
+            }),
+        ]);
 
         Log::info('📄 FORM DATA EDIT - DOCUMENTOS Y ASOCIACIONES', [
             'vessel_id' => $this->record->id,
@@ -166,6 +226,24 @@ class EditVessel extends EditRecord
 
         try {
             $this->handleVesselAssociations();
+
+            // Verificar documentos después de todo el procesamiento
+            $finalDocuments = VesselDocument::where('vessel_id', $this->record->id)->get();
+            
+            Log::info('📋 DOCUMENTOS FINALES EN BD DESPUÉS DE GUARDAR', [
+                'vessel_id' => $this->record->id,
+                'final_documents_count' => $finalDocuments->count(),
+                'new_documents_created' => $finalDocuments->where('created_at', '>=', now()->subMinute())->count(),
+                'final_documents' => $finalDocuments->map(function($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'document_type' => $doc->document_type,
+                        'file_name' => $doc->file_name,
+                        'created_at' => $doc->created_at->toDateTimeString(),
+                        'updated_at' => $doc->updated_at->toDateTimeString(),
+                    ];
+                })->toArray()
+            ]);
 
             Log::info('✅ ========== EDITVESSEL AFTERSAVE COMPLETADO EXITOSAMENTE ==========', [
                 'vessel_id' => $this->record->id,

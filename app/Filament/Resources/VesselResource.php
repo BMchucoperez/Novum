@@ -789,61 +789,18 @@ class VesselResource extends Resource
                     ]);
                 })
                 ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
-                    $startTime = microtime(true);
                     $fieldName = "document_{$documentType}";
 
-                    Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED INICIADO =====', [
+                    Log::info('📤 ARCHIVO SUBIDO AL COMPONENTE', [
                         'vessel_id' => $record ? $record->id : 'null',
-                        'vessel_name' => $record ? $record->name : 'null',
-                        'field_name' => $fieldName,
                         'document_type' => $documentType,
-                        'document_name' => $documentName,
-                        'category' => $category,
-                        'state_type' => gettype($state),
+                        'field_name' => $fieldName,
                         'state_count' => is_array($state) ? count($state) : (empty($state) ? 0 : 1),
-                        'has_record' => !empty($record),
-                        'has_state' => !empty($state),
-                        'timestamp' => now()->toDateTimeString(),
-                        'memory_usage' => memory_get_usage(true),
-                        'user_id' => auth()->id(),
                     ]);
 
                     if ($record && !empty($state)) {
-                        Log::info('🔍 ANALIZANDO ARCHIVOS EN STATE', [
-                            'vessel_id' => $record->id,
-                            'field_name' => $fieldName,
-                            'state_details' => is_array($state) ?
-                                array_map(function($file, $index) {
-                                    return [
-                                        'index' => $index,
-                                        'type' => gettype($file),
-                                        'is_string' => is_string($file),
-                                        'is_object' => is_object($file),
-                                        'class' => is_object($file) ? get_class($file) : 'not_object',
-                                        'original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
-                                        'size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
-                                        'will_process' => $file && !is_string($file)
-                                    ];
-                                }, $state, array_keys($state)) :
-                                [[
-                                    'index' => 0,
-                                    'type' => gettype($state),
-                                    'is_string' => is_string($state),
-                                    'is_object' => is_object($state),
-                                    'class' => is_object($state) ? get_class($state) : 'not_object',
-                                    'original_name' => is_object($state) && method_exists($state, 'getClientOriginalName') ? $state->getClientOriginalName() : 'unknown',
-                                    'size' => is_object($state) && method_exists($state, 'getSize') ? $state->getSize() : 'unknown',
-                                    'will_process' => $state && !is_string($state)
-                                ]]
-                        ]);
-
-                        $processedCount = 0;
-                        $skippedCount = 0;
-                        $errors = [];
-
                         // Normalizar state a array para procesamiento uniforme
                         $stateArray = is_array($state) ? $state : [$state];
-                        $totalFiles = count($stateArray);
 
                         // Detectar archivos nuevos vs existentes
                         $hasNewFiles = false;
@@ -857,96 +814,42 @@ class VesselResource extends Resource
                             }
                         }
 
-                        Log::info("🔍 ANÁLISIS DE ARCHIVOS EN STATE", [
-                            'vessel_id' => $record->id,
-                            'field_name' => $fieldName,
-                            'total_files' => $totalFiles,
-                            'has_new_files' => $hasNewFiles,
-                            'has_new_upload' => !empty($newFileDetected),
-                        ]);
-
                         // Si hay archivos nuevos, procesar solo el más reciente (último subido)
                         if ($hasNewFiles && $newFileDetected) {
-                            Log::info("📂 PROCESANDO ARCHIVO NUEVO DETECTADO", [
+                            Log::info("📂 PROCESANDO ARCHIVO NUEVO", [
                                 'vessel_id' => $record->id,
-                                'field_name' => $fieldName,
-                                'file_type' => gettype($newFileDetected),
-                                'file_class' => is_object($newFileDetected) ? get_class($newFileDetected) : 'not_object',
-                                'action' => 'replace_existing_document',
+                                'document_type' => $documentType,
+                                'file_name' => method_exists($newFileDetected, 'getClientOriginalName') ? $newFileDetected->getClientOriginalName() : 'unknown',
                             ]);
 
                             try {
                                 // Procesar el archivo nuevo (esto reemplazará el existente)
                                 static::handleDocumentUpload($newFileDetected, $record, $documentType, $category, $documentName);
-                                $processedCount++;
 
-                                Log::info("✅ ARCHIVO NUEVO PROCESADO Y REEMPLAZADO", [
+                                Log::info("✅ ARCHIVO PROCESADO EXITOSAMENTE", [
                                     'vessel_id' => $record->id,
-                                    'field_name' => $fieldName,
-                                    'action' => 'document_replaced',
+                                    'document_type' => $documentType,
                                 ]);
 
                                 // Actualizar el estado del componente con el archivo guardado
                                 $document = $record->getDocumentByType($documentType);
                                 if ($document) {
                                     $component->state([$document->file_path]);
-                                    Log::info('🔄 COMPONENT STATE ACTUALIZADO DESPUÉS DE GUARDAR', [
+                                    Log::info('🔄 ESTADO DEL COMPONENTE ACTUALIZADO', [
                                         'vessel_id' => $record->id,
-                                        'field_name' => $fieldName,
+                                        'document_type' => $documentType,
                                         'new_file_path' => $document->file_path,
-                                        'document_id' => $document->id
                                     ]);
                                 }
 
                             } catch (\Exception $e) {
-                                $errors[] = [
-                                    'file_type' => 'new_upload',
-                                    'error' => $e->getMessage()
-                                ];
-
-                                Log::error("❌ ERROR PROCESANDO ARCHIVO NUEVO", [
+                                Log::error("❌ ERROR PROCESANDO ARCHIVO", [
                                     'vessel_id' => $record->id,
-                                    'field_name' => $fieldName,
-                                    'error_message' => $e->getMessage(),
-                                    'error_trace' => $e->getTraceAsString(),
+                                    'document_type' => $documentType,
+                                    'error' => $e->getMessage(),
                                 ]);
                             }
-                        } else {
-                            // Solo archivos existentes, no hacer nada
-                            $skippedCount = $totalFiles;
-                            Log::info("⏭️ SOLO ARCHIVOS EXISTENTES DETECTADOS", [
-                                'vessel_id' => $record->id,
-                                'field_name' => $fieldName,
-                                'reason' => 'no_new_uploads_detected',
-                                'existing_files' => array_map(function($file) {
-                                    return is_string($file) ? basename($file) : 'unknown';
-                                }, $stateArray),
-                            ]);
                         }
-
-                        $endTime = microtime(true);
-                        $processingTime = ($endTime - $startTime) * 1000;
-
-                        Log::info('📤 ===== FILEUPLOAD AFTERSTATEUPDATED COMPLETADO =====', [
-                            'vessel_id' => $record->id,
-                            'field_name' => $fieldName,
-                            'total_files' => $totalFiles,
-                            'processed_files' => $processedCount,
-                            'skipped_files' => $skippedCount,
-                            'errors_count' => count($errors),
-                            'errors' => $errors,
-                            'processing_time_ms' => round($processingTime, 2),
-                            'success' => count($errors) === 0,
-                        ]);
-
-                    } else {
-                        Log::warning('⚠️ CALLBACK SIN PROCESAR', [
-                            'vessel_id' => $record ? $record->id : 'null',
-                            'field_name' => $fieldName,
-                            'has_record' => !empty($record),
-                            'has_state' => !empty($state),
-                            'reason' => !$record ? 'no_record' : 'empty_state'
-                        ]);
                     }
                 })
                 ->downloadable()
