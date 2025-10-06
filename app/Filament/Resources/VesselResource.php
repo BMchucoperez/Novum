@@ -788,7 +788,7 @@ class VesselResource extends Resource
                         'document_type' => $documentType,
                     ]);
                 })
-                ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
                     $startTime = microtime(true);
                     $fieldName = "document_{$documentType}";
 
@@ -885,6 +885,18 @@ class VesselResource extends Resource
                                     'field_name' => $fieldName,
                                     'action' => 'document_replaced',
                                 ]);
+
+                                // Actualizar el estado del componente con el archivo guardado
+                                $document = $record->getDocumentByType($documentType);
+                                if ($document) {
+                                    $component->state([$document->file_path]);
+                                    Log::info('🔄 COMPONENT STATE ACTUALIZADO DESPUÉS DE GUARDAR', [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'new_file_path' => $document->file_path,
+                                        'document_id' => $document->id
+                                    ]);
+                                }
 
                             } catch (\Exception $e) {
                                 $errors[] = [
@@ -1242,7 +1254,7 @@ class VesselResource extends Resource
                         'document_type' => $documentType,
                     ]);
                 })
-                ->afterStateUpdated(function ($state, $record) use ($documentType, $category, $documentName) {
+                ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
                     $startTime = microtime(true);
                     $fieldName = "document_{$documentType}";
 
@@ -1339,6 +1351,18 @@ class VesselResource extends Resource
                                     'field_name' => $fieldName,
                                     'action' => 'document_replaced',
                                 ]);
+
+                                // Actualizar el estado del componente con el archivo guardado
+                                $document = $record->getDocumentByType($documentType);
+                                if ($document) {
+                                    $component->state([$document->file_path]);
+                                    Log::info('🔄 COMPONENT STATE ACTUALIZADO DESPUÉS DE GUARDAR', [
+                                        'vessel_id' => $record->id,
+                                        'field_name' => $fieldName,
+                                        'new_file_path' => $document->file_path,
+                                        'document_id' => $document->id
+                                    ]);
+                                }
 
                             } catch (\Exception $e) {
                                 $errors[] = [
