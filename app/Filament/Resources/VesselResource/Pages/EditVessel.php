@@ -26,6 +26,60 @@ class EditVessel extends EditRecord
         return $this->getResource()::getUrl('index');
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        Log::info('📥 CARGANDO FORMULARIO - MUTATE BEFORE FILL', [
+            'vessel_id' => $this->record->id,
+            'vessel_name' => $this->record->name,
+        ]);
+
+        // Cargar todos los documentos desde la BD
+        $documents = VesselDocument::where('vessel_id', $this->record->id)->get();
+
+        Log::info('📄 DOCUMENTOS ENCONTRADOS EN BD', [
+            'vessel_id' => $this->record->id,
+            'documents_count' => $documents->count(),
+            'document_types' => $documents->pluck('document_type', 'id')->toArray(),
+        ]);
+
+        // Agregar cada documento al array de datos del formulario
+        foreach ($documents as $document) {
+            $fieldName = "document_{$document->document_type}";
+            $data[$fieldName] = [$document->file_path];
+
+            Log::info('📂 CARGANDO DOCUMENTO EN FORMULARIO', [
+                'vessel_id' => $this->record->id,
+                'document_id' => $document->id,
+                'document_type' => $document->document_type,
+                'field_name' => $fieldName,
+                'file_path' => $document->file_path,
+            ]);
+        }
+
+        // Cargar el Repeater "existing_documents" para el tab "Documentos Cargados"
+        $data['existing_documents'] = $documents->map(function ($doc) {
+            return [
+                'id' => $doc->id,
+                'document_name' => $doc->document_name,
+                'document_category' => $doc->document_category,
+                'file_name' => $doc->file_name,
+                'file_path' => $doc->file_path,
+                'file_size' => $doc->file_size,
+                'uploaded_at' => $doc->uploaded_at,
+                'status' => $doc->getStatusText(),
+            ];
+        })->toArray();
+
+        Log::info('✅ FORMULARIO CARGADO CON DOCUMENTOS', [
+            'vessel_id' => $this->record->id,
+            'total_fields' => count($data),
+            'document_fields_loaded' => $documents->count(),
+            'existing_documents_count' => count($data['existing_documents']),
+        ]);
+
+        return $data;
+    }
+
     protected function beforeSave(): void
     {
         Log::info('💾 ========== BOTÓN GUARDAR PRESIONADO ==========', [
@@ -168,10 +222,28 @@ class EditVessel extends EditRecord
                 'other_fields' => $otherFields
             ]);
         }
+
+        // VERIFICAR DOCUMENTOS EN BD ANTES DE GUARDAR
+        $docsBeforeSave = VesselDocument::where('vessel_id', $this->record->id)->get();
+        Log::info('🔍 VERIFICACIÓN BEFORE SAVE - DOCUMENTOS EN BD', [
+            'vessel_id' => $this->record->id,
+            'documents_count' => $docsBeforeSave->count(),
+            'document_ids' => $docsBeforeSave->pluck('id')->toArray(),
+            'document_types' => $docsBeforeSave->pluck('document_type', 'id')->toArray(),
+        ]);
     }
 
     protected function afterSave(): void
     {
+        // VERIFICAR DOCUMENTOS INMEDIATAMENTE DESPUÉS DE SAVE
+        $docsAfterSave = VesselDocument::where('vessel_id', $this->record->id)->get();
+        Log::info('🔍 VERIFICACIÓN AFTER SAVE (INMEDIATA) - DOCUMENTOS EN BD', [
+            'vessel_id' => $this->record->id,
+            'documents_count' => $docsAfterSave->count(),
+            'document_ids' => $docsAfterSave->pluck('id')->toArray(),
+            'document_types' => $docsAfterSave->pluck('document_type', 'id')->toArray(),
+        ]);
+
         Log::info('✏️ ========== PROCESANDO DESPUÉS DE GUARDAR ==========', [
             'vessel_id' => $this->record->id,
             'vessel_name' => $this->record->name,

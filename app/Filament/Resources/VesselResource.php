@@ -362,7 +362,6 @@ class VesselResource extends Resource
                                 Section::make('Documentos')
                                     ->schema([
                                         Forms\Components\Repeater::make('existing_documents')
-                                            ->relationship('vesselDocuments')
                                             ->schema([
                                                 Forms\Components\TextInput::make('document_name')
                                                     ->label('Documento')
@@ -370,19 +369,30 @@ class VesselResource extends Resource
                                                 Forms\Components\Actions::make([
                                                     Forms\Components\Actions\Action::make('download')
                                                         ->label('Descargar')
-                                                        ->url(function ($record) {
-                                                            if ($record && $record->file_path && file_exists(storage_path('app/public/' . $record->file_path))) {
-                                                                return \Illuminate\Support\Facades\Storage::disk('public')->url($record->file_path);
+                                                        ->url(function ($record, $state) {
+                                                            if (isset($state['file_path']) && file_exists(storage_path('app/public/' . $state['file_path']))) {
+                                                                return \Illuminate\Support\Facades\Storage::disk('public')->url($state['file_path']);
                                                             }
                                                             return null;
                                                         })
                                                         ->openUrlInNewTab()
-                                                        ->disabled(function ($record) {
-                                                            return !($record && $record->file_path && file_exists(storage_path('app/public/' . $record->file_path)));
+                                                        ->disabled(function ($state) {
+                                                            return !(isset($state['file_path']) && file_exists(storage_path('app/public/' . $state['file_path'])));
                                                         }),
                                                 ]),
                                             ])
+                                            ->default(function ($record) {
+                                                if (!$record) return [];
+                                                return $record->vesselDocuments->map(function ($doc) {
+                                                    return [
+                                                        'id' => $doc->id,
+                                                        'document_name' => $doc->document_name,
+                                                        'file_path' => $doc->file_path,
+                                                    ];
+                                                })->toArray();
+                                            })
                                             ->columns(2)
+                                            ->dehydrated(false)
                                             ->addable(false)
                                             ->deletable(false)
                                             ->reorderable(false),
@@ -695,13 +705,23 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-                ->afterStateHydrated(function ($state, $set, $record) use ($documentType) {
+                ->default(function ($record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
-                        if ($document && $document->file_path) {
-                            $set("document_{$documentType}", [$document->file_path]);
-                        }
+                        $result = $document && $document->file_path ? [$document->file_path] : [];
+
+                        Log::info('🔄 CARGANDO DOCUMENTO EN DEFAULT', [
+                            'vessel_id' => $record->id,
+                            'document_type' => $documentType,
+                            'document_found' => $document ? true : false,
+                            'document_id' => $document ? $document->id : null,
+                            'file_path' => $document ? $document->file_path : null,
+                            'result' => $result,
+                        ]);
+
+                        return $result;
                     }
+                    return [];
                 })
                 ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
                     $fieldName = "document_{$documentType}";
@@ -711,6 +731,17 @@ class VesselResource extends Resource
                         'document_type' => $documentType,
                         'field_name' => $fieldName,
                         'state_count' => is_array($state) ? count($state) : (empty($state) ? 0 : 1),
+                        'state_type' => gettype($state),
+                        'state_value_raw' => $state,
+                        'state_content' => is_array($state) ? array_map(function($item) {
+                            return [
+                                'type' => gettype($item),
+                                'is_object' => is_object($item),
+                                'class' => is_object($item) ? get_class($item) : 'not_object',
+                                'is_string' => is_string($item),
+                                'string_value' => is_string($item) ? $item : 'not_string'
+                            ];
+                        }, $state) : (is_string($state) ? $state : 'not_string_not_array')
                     ]);
 
                     if ($record && !empty($state)) {
@@ -722,12 +753,70 @@ class VesselResource extends Resource
                         $newFileDetected = null;
 
                         foreach ($stateArray as $index => $file) {
-                            if ($file && !is_string($file)) {
+                            // Detectar archivos nuevos de Livewire
+                            $isNewFile = false;
+                            
+                            if (is_object($file)) {
+                                // Es un objeto TemporaryUploadedFile de Livewire
+                                $isNewFile = true;
+                                Log::info('🔍 ARCHIVO NUEVO DETECTADO - OBJETO', [
+                                    'vessel_id' => $record->id,
+                                    'file_class' => get_class($file),
+                                    'index' => $index
+                                ]);
+                            } elseif (is_string($file)) {
+                                // Verificar si es una ruta temporal de Livewire (contiene hash y no es vessel-documents)
+                                if (str_contains($file, '/') && !str_contains($file, 'vessel-documents/')) {
+                                    $isNewFile = true;
+                                    Log::info('🔍 ARCHIVO NUEVO DETECTADO - RUTA TEMPORAL', [
+                                        'vessel_id' => $record->id,
+                                        'file_path' => $file,
+                                        'index' => $index
+                                    ]);
+                                } elseif (str_contains($file, 'vessel-documents/')) {
+                                    // Es una ruta vessel-documents - verificar si es diferente a la BD
+                                    $existingDocument = $record->getDocumentByType($documentType);
+                                    $existingPath = $existingDocument ? $existingDocument->file_path : null;
+
+                                    if (!$existingPath || $existingPath !== $file) {
+                                        // No hay documento en BD o la ruta es diferente = archivo nuevo
+                                        $isNewFile = true;
+                                        Log::info('🔍 ARCHIVO NUEVO DETECTADO - RUTA DIFERENTE A BD', [
+                                            'vessel_id' => $record->id,
+                                            'file_path' => $file,
+                                            'existing_path' => $existingPath,
+                                            'index' => $index
+                                        ]);
+                                    } else {
+                                        // La ruta coincide con la BD = archivo existente, skip
+                                        Log::info('🔍 ARCHIVO EXISTENTE IGNORADO', [
+                                            'vessel_id' => $record->id,
+                                            'file_path' => $file,
+                                            'index' => $index
+                                        ]);
+                                    }
+                                } else {
+                                    // Otras rutas string sin "/" se ignoran
+                                    Log::info('🔍 ARCHIVO EXISTENTE IGNORADO - STRING SIN RUTA', [
+                                        'vessel_id' => $record->id,
+                                        'file_path' => $file,
+                                        'index' => $index
+                                    ]);
+                                }
+                            }
+                            
+                            if ($isNewFile) {
                                 $hasNewFiles = true;
                                 $newFileDetected = $file;
                                 break;
                             }
                         }
+
+                        Log::info("🔍 RESULTADO DETECCIÓN", [
+                            'vessel_id' => $record->id,
+                            'has_new_files' => $hasNewFiles,
+                            'new_file_detected' => $newFileDetected ? 'yes' : 'no'
+                        ]);
 
                         // Si hay archivos nuevos, procesar solo el más reciente (último subido)
                         if ($hasNewFiles && $newFileDetected) {
@@ -810,21 +899,40 @@ class VesselResource extends Resource
                 $mimeType = $file->getMimeType();
                 $fileName = $newFileName;
                 
-            } elseif (is_string($file) && file_exists($file)) {
-                // Es una ruta de archivo temporal
-                Log::info("📄 GUARDANDO ARCHIVO TEMPORAL: {$file}");
+            } elseif (is_string($file)) {
+                // Manejar rutas temporales de Livewire (formato: /hash-metaNombreDelArchivo.pdf)
+                Log::info("📄 GUARDANDO ARCHIVO TEMPORAL DE LIVEWIRE: {$file}");
                 
-                $fileInfo = pathinfo($file);
-                $extension = strtolower($fileInfo['extension'] ?? 'pdf');
+                // Obtener el archivo temporal desde Livewire
+                $tempFilePath = storage_path('app/livewire-tmp' . $file);
+                
+                if (!file_exists($tempFilePath)) {
+                    throw new \Exception("Archivo temporal no encontrado: {$tempFilePath}");
+                }
+                
+                // Decodificar el nombre original del archivo
+                $originalName = 'document.pdf';
+                if (preg_match('/-meta([A-Za-z0-9+\/=]+)\.([a-z]+)$/', $file, $matches)) {
+                    $encodedName = $matches[1];
+                    $extension = $matches[2];
+                    $decodedName = base64_decode($encodedName);
+                    if ($decodedName) {
+                        $originalName = $decodedName;
+                    }
+                } else {
+                    // Extraer extensión del archivo temporal
+                    $pathInfo = pathinfo($file);
+                    $extension = $pathInfo['extension'] ?? 'pdf';
+                }
                 
                 // Validar extensión
-                if (!in_array($extension, ['pdf', 'png', 'jpg', 'jpeg'])) {
+                if (!in_array(strtolower($extension), ['pdf', 'png', 'jpg', 'jpeg'])) {
                     throw new \Exception("Tipo de archivo no permitido: {$extension}");
                 }
                 
-                $content = file_get_contents($file);
+                $content = file_get_contents($tempFilePath);
                 if ($content === false) {
-                    throw new \Exception("No se pudo leer el archivo: {$file}");
+                    throw new \Exception("No se pudo leer el archivo temporal: {$tempFilePath}");
                 }
                 
                 $newFileName = $documentType . '_' . $vessel->id . '_' . time() . '.' . $extension;
@@ -836,13 +944,16 @@ class VesselResource extends Resource
                 }
                 
                 $fileSize = strlen($content);
-                $mimeType = match($extension) {
+                $mimeType = match(strtolower($extension)) {
                     'pdf' => 'application/pdf',
                     'png' => 'image/png',
                     'jpg', 'jpeg' => 'image/jpeg',
                     default => 'application/pdf'
                 };
                 $fileName = $newFileName;
+                
+                // Limpiar archivo temporal
+                @unlink($tempFilePath);
                 
             } else {
                 throw new \Exception("Formato de archivo no reconocido");
@@ -947,97 +1058,23 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-                ->afterStateHydrated(function ($component, $record) use ($documentType, $category, $documentName) {
-                    Log::info('🔍 ===== AFTERSTATEHYDRATED INICIADO =====', [
-                        'vessel_id' => $record ? $record->id : 'null',
-                        'vessel_name' => $record ? $record->name : 'null',
-                        'document_type' => $documentType,
-                        'document_name' => $documentName,
-                        'category' => $category,
-                        'field_name' => "document_{$documentType}",
-                    ]);
-
+                ->default(function ($record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
+                        $result = $document && $document->file_path ? [$document->file_path] : [];
 
-                        Log::info('📄 BUSCANDO DOCUMENTO EN BD', [
+                        Log::info('🔄 CARGANDO DOCUMENTO EN DEFAULT', [
                             'vessel_id' => $record->id,
                             'document_type' => $documentType,
-                            'document_found' => !empty($document),
-                            'document_id' => $document ? $document->id : 'null',
-                            'document_file_path' => $document ? $document->file_path : 'null',
-                            'document_file_name' => $document ? $document->file_name : 'null',
+                            'document_found' => $document ? true : false,
+                            'document_id' => $document ? $document->id : null,
+                            'file_path' => $document ? $document->file_path : null,
+                            'result' => $result,
                         ]);
 
-                        if ($document && $document->file_path) {
-                            // Verificar si el archivo existe físicamente - probar ambas ubicaciones
-                            $publicPath = storage_path('app/public/' . $document->file_path);
-                            $privatePath = storage_path('app/' . $document->file_path);
-
-                            $fileExists = false;
-                            $fullPath = '';
-                            $diskType = '';
-
-                            // Primero probar en disco público (nueva ubicación)
-                            if (file_exists($publicPath)) {
-                                $fileExists = true;
-                                $fullPath = $publicPath;
-                                $diskType = 'public';
-                            }
-                            // Si no existe, probar en disco local (ubicación antigua)
-                            elseif (file_exists($privatePath)) {
-                                $fileExists = true;
-                                $fullPath = $privatePath;
-                                $diskType = 'local';
-                            }
-
-                            $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
-                            $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
-
-                            Log::info('💾 VERIFICACIÓN FÍSICA DEL ARCHIVO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'db_file_path' => $document->file_path,
-                                'public_path_checked' => $publicPath,
-                                'private_path_checked' => $privatePath,
-                                'file_found_in' => $diskType,
-                                'full_storage_path' => $fullPath,
-                                'file_exists' => $fileExists,
-                                'file_permissions' => $filePermissions,
-                                'file_size_bytes' => $fileSize,
-                                'expected_public_url' => $diskType === 'public' ? url('storage/' . $document->file_path) : 'N/A (private file)',
-                            ]);
-
-                            // Para FileUpload, el estado debe ser un array de archivos
-                            $component->state([$document->file_path]);
-
-                            Log::info('✅ COMPONENT STATE CONFIGURADO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'component_state' => [$document->file_path],
-                                'state_count' => 1,
-                            ]);
-                        } else {
-                            // Si no hay documento, estado vacío
-                            $component->state([]);
-
-                            Log::info('❌ NO HAY DOCUMENTO - STATE VACÍO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'reason' => !$document ? 'no_document_in_db' : 'no_file_path',
-                            ]);
-                        }
-                    } else {
-                        Log::warning('⚠️ NO HAY RECORD EN AFTERSTATEHYDRATED', [
-                            'document_type' => $documentType,
-                            'reason' => 'record_is_null'
-                        ]);
+                        return $result;
                     }
-
-                    Log::info('🔍 ===== AFTERSTATEHYDRATED COMPLETADO =====', [
-                        'vessel_id' => $record ? $record->id : 'null',
-                        'document_type' => $documentType,
-                    ]);
+                    return [];
                 })
                 ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
                     $startTime = microtime(true);
@@ -1216,7 +1253,6 @@ class VesselResource extends Resource
     {
         return Forms\Components\Repeater::make('existing_documents')
             ->label('Documentos Existentes')
-            ->relationship('vesselDocuments')
             ->schema([
                 // Primera fila: Información principal
                 Forms\Components\Group::make()->schema([
@@ -1255,23 +1291,21 @@ class VesselResource extends Resource
                     Forms\Components\TextInput::make('status')
                         ->label('Estado')
                         ->disabled()
-                        ->formatStateUsing(function ($state, $record) {
-                            if (!$record) return 'Desconocido';
-                            return $record->getStatusText();
+                        ->formatStateUsing(function ($state) {
+                            return $state ?? 'Desconocido';
                         })
-                        ->extraAttributes(function ($state, $record) {
-                            if (!$record) return ['style' => 'background-color: #6b7280; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;'];
-                            
-                            $color = match($record->getStatusColor()) {
-                                'success' => '#10b981',
-                                'warning' => '#f59e0b',
-                                'danger' => '#ef4444',
-                                'primary' => '#3b82f6',
-                                'info' => '#06b6d4',
-                                'secondary' => '#6b7280',
+                        ->extraAttributes(function ($state, $get) {
+                            if (!$state) return ['style' => 'background-color: #6b7280; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;'];
+
+                            // Mapear el texto del estado a un color
+                            $color = match($state) {
+                                'Vigente' => '#10b981',
+                                'Por vencer' => '#f59e0b',
+                                'Vencido' => '#ef4444',
+                                'Inválido' => '#ef4444',
                                 default => '#6b7280',
                             };
-                            
+
                             return [
                                 'style' => "background-color: {$color}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-align: center;"
                             ];
@@ -1302,21 +1336,23 @@ class VesselResource extends Resource
                     
                     Forms\Components\Actions::make([
                         Forms\Components\Actions\Action::make('download')
-                            ->label(function ($record) {
-                                if (!$record || !$record->file_path) {
+                            ->label(function ($get) {
+                                $filePath = $get('file_path');
+                                if (!$filePath) {
                                     return 'No disponible';
                                 }
                                 return 'Descargar';
                             })
                             ->icon('heroicon-o-arrow-down-tray')
-                            ->color(function ($record) {
-                                if (!$record || !$record->file_path) {
+                            ->color(function ($get) {
+                                $filePath = $get('file_path');
+                                if (!$filePath) {
                                     return 'gray';
                                 }
 
                                 // Verificar ubicación del archivo
-                                $publicPath = storage_path('app/public/' . $record->file_path);
-                                $privatePath = storage_path('app/' . $record->file_path);
+                                $publicPath = storage_path('app/public/' . $filePath);
+                                $privatePath = storage_path('app/' . $filePath);
 
                                 if (file_exists($publicPath)) {
                                     return 'success';
@@ -1326,40 +1362,43 @@ class VesselResource extends Resource
                                     return 'danger';
                                 }
                             })
-                            ->url(function ($record) {
-                                if (!$record || !$record->file_path) {
+                            ->url(function ($get) {
+                                $filePath = $get('file_path');
+                                if (!$filePath) {
                                     return null;
                                 }
 
                                 // Verificar ubicación del archivo
-                                $publicPath = storage_path('app/public/' . $record->file_path);
+                                $publicPath = storage_path('app/public/' . $filePath);
 
                                 if (file_exists($publicPath)) {
-                                    return \Illuminate\Support\Facades\Storage::disk('public')->url($record->file_path);
+                                    return \Illuminate\Support\Facades\Storage::disk('public')->url($filePath);
                                 }
 
                                 return null;
                             })
                             ->openUrlInNewTab()
-                            ->disabled(function ($record) {
-                                if (!$record || !$record->file_path) {
+                            ->disabled(function ($get) {
+                                $filePath = $get('file_path');
+                                if (!$filePath) {
                                     return true;
                                 }
 
                                 // Solo habilitar si el archivo existe en ubicación pública
-                                $publicPath = storage_path('app/public/' . $record->file_path);
+                                $publicPath = storage_path('app/public/' . $filePath);
                                 return !file_exists($publicPath);
                             })
-                            ->tooltip(function ($record) {
-                                if (!$record || !$record->file_path) {
+                            ->tooltip(function ($get) {
+                                $filePath = $get('file_path');
+                                if (!$filePath) {
                                     return 'Archivo no disponible';
                                 }
 
-                                $publicPath = storage_path('app/public/' . $record->file_path);
-                                $privatePath = storage_path('app/' . $record->file_path);
+                                $publicPath = storage_path('app/public/' . $filePath);
+                                $privatePath = storage_path('app/' . $filePath);
 
                                 if (file_exists($publicPath)) {
-                                    return 'Descargar archivo: ' . basename($record->file_path);
+                                    return 'Descargar archivo: ' . basename($filePath);
                                 } elseif (file_exists($privatePath)) {
                                     return 'Archivo en ubicación privada - necesita migración';
                                 } else {
@@ -1371,10 +1410,13 @@ class VesselResource extends Resource
                             ->label('Info')
                             ->icon('heroicon-o-information-circle')
                             ->color('gray')
-                            ->action(function ($record) {
+                            ->action(function ($get) {
                                 // Esta acción mostrará información del archivo
-                                $publicPath = storage_path('app/public/' . $record->file_path);
-                                $privatePath = storage_path('app/' . $record->file_path);
+                                $filePath = $get('file_path');
+                                if (!$filePath) return;
+
+                                $publicPath = storage_path('app/public/' . $filePath);
+                                $privatePath = storage_path('app/' . $filePath);
 
                                 $status = 'No encontrado';
                                 $location = 'N/A';
@@ -1391,9 +1433,10 @@ class VesselResource extends Resource
                                 }
 
                                 // Mostrar notificación con información
+                                $fileName = $get('file_name');
                                 \Filament\Notifications\Notification::make()
                                     ->title('Información del Archivo')
-                                    ->body("Archivo: {$record->file_name}<br>Estado: {$status}<br>Ubicación: {$location}<br>Tamaño: {$size}")
+                                    ->body("Archivo: {$fileName}<br>Estado: {$status}<br>Ubicación: {$location}<br>Tamaño: {$size}")
                                     ->info()
                                     ->duration(5000)
                                     ->send();
@@ -1403,6 +1446,21 @@ class VesselResource extends Resource
                     ->columnSpan(1),
                 ])->columns(4),
             ])
+            ->default(function ($record) {
+                if (!$record) return [];
+                return $record->vesselDocuments->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'document_name' => $doc->document_name,
+                        'document_category' => $doc->document_category,
+                        'file_name' => $doc->file_name,
+                        'file_path' => $doc->file_path,
+                        'file_size' => $doc->file_size,
+                        'uploaded_at' => $doc->uploaded_at,
+                        'status' => $doc->getStatusText(),
+                    ];
+                })->toArray();
+            })
             ->columns(1)
             ->columnSpanFull()
             ->disabled()
