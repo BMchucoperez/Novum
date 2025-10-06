@@ -179,63 +179,7 @@ class Vessel extends Model
      */
     public function getDocumentByType(string $documentType): ?VesselDocument
     {
-        Log::info('🔍 ===== GETDOCUMENTBYTYPE INICIADO =====', [
-            'vessel_id' => $this->id,
-            'vessel_name' => $this->name,
-            'document_type' => $documentType,
-            'method' => 'Vessel::getDocumentByType',
-        ]);
-
-        $query = $this->vesselDocuments()->where('document_type', $documentType);
-
-        Log::info('📋 SQL QUERY GENERADA', [
-            'vessel_id' => $this->id,
-            'document_type' => $documentType,
-            'sql' => $query->toSql(),
-            'bindings' => $query->getBindings(),
-        ]);
-
-        $document = $query->first();
-
-        Log::info('📄 RESULTADO DE BÚSQUEDA EN BD', [
-            'vessel_id' => $this->id,
-            'document_type' => $documentType,
-            'document_found' => !empty($document),
-            'document_id' => $document ? $document->id : 'null',
-            'document_file_path' => $document ? $document->file_path : 'null',
-            'document_file_name' => $document ? $document->file_name : 'null',
-            'document_created_at' => $document ? $document->created_at->toDateTimeString() : 'null',
-            'document_updated_at' => $document ? $document->updated_at->toDateTimeString() : 'null',
-            'document_is_valid' => $document ? $document->is_valid : 'null',
-        ]);
-
-        if ($document) {
-            // Verificar archivo físico en disco público
-            $fullPath = storage_path('app/public/' . $document->file_path);
-            $fileExists = file_exists($fullPath);
-
-            Log::info('💾 VERIFICACIÓN ARCHIVO FÍSICO DESDE MODELO', [
-                'vessel_id' => $this->id,
-                'document_id' => $document->id,
-                'document_type' => $documentType,
-                'db_file_path' => $document->file_path,
-                'full_storage_path' => $fullPath,
-                'file_exists' => $fileExists,
-                'file_readable' => $fileExists ? is_readable($fullPath) : false,
-                'file_size' => $fileExists ? filesize($fullPath) : 'N/A',
-                'file_permissions' => $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A',
-                'directory_exists' => file_exists(dirname($fullPath)),
-                'directory_permissions' => file_exists(dirname($fullPath)) ? substr(sprintf('%o', fileperms(dirname($fullPath))), -4) : 'N/A',
-            ]);
-        }
-
-        Log::info('🔍 ===== GETDOCUMENTBYTYPE COMPLETADO =====', [
-            'vessel_id' => $this->id,
-            'document_type' => $documentType,
-            'result' => $document ? 'found' : 'not_found',
-        ]);
-
-        return $document;
+        return $this->vesselDocuments()->where('document_type', $documentType)->first();
     }
 
     /**

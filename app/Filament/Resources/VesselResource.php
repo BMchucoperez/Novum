@@ -695,98 +695,13 @@ class VesselResource extends Resource
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
                 ->helperText('Solo PDF y PNG. Máximo 10MB.')
-
-                ->afterStateHydrated(function ($component, $record) use ($documentType, $category, $documentName) {
-                    Log::info('🔍 ===== AFTERSTATEHYDRATED INICIADO =====', [
-                        'vessel_id' => $record ? $record->id : 'null',
-                        'vessel_name' => $record ? $record->name : 'null',
-                        'document_type' => $documentType,
-                        'document_name' => $documentName,
-                        'category' => $category,
-                        'field_name' => "document_{$documentType}",
-                    ]);
-
+                ->afterStateHydrated(function ($state, $set, $record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
-
-                        Log::info('📄 BUSCANDO DOCUMENTO EN BD', [
-                            'vessel_id' => $record->id,
-                            'document_type' => $documentType,
-                            'document_found' => !empty($document),
-                            'document_id' => $document ? $document->id : 'null',
-                            'document_file_path' => $document ? $document->file_path : 'null',
-                            'document_file_name' => $document ? $document->file_name : 'null',
-                        ]);
-
                         if ($document && $document->file_path) {
-                            // Verificar si el archivo existe físicamente - probar ambas ubicaciones
-                            $publicPath = storage_path('app/public/' . $document->file_path);
-                            $privatePath = storage_path('app/' . $document->file_path);
-
-                            $fileExists = false;
-                            $fullPath = '';
-                            $diskType = '';
-
-                            // Primero probar en disco público (nueva ubicación)
-                            if (file_exists($publicPath)) {
-                                $fileExists = true;
-                                $fullPath = $publicPath;
-                                $diskType = 'public';
-                            }
-                            // Si no existe, probar en disco local (ubicación antigua)
-                            elseif (file_exists($privatePath)) {
-                                $fileExists = true;
-                                $fullPath = $privatePath;
-                                $diskType = 'local';
-                            }
-
-                            $filePermissions = $fileExists ? substr(sprintf('%o', fileperms($fullPath)), -4) : 'N/A';
-                            $fileSize = $fileExists ? filesize($fullPath) : 'N/A';
-
-                            Log::info('💾 VERIFICACIÓN FÍSICA DEL ARCHIVO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'db_file_path' => $document->file_path,
-                                'public_path_checked' => $publicPath,
-                                'private_path_checked' => $privatePath,
-                                'file_found_in' => $diskType,
-                                'full_storage_path' => $fullPath,
-                                'file_exists' => $fileExists,
-                                'file_permissions' => $filePermissions,
-                                'file_size_bytes' => $fileSize,
-                                'expected_public_url' => $diskType === 'public' ? url('storage/' . $document->file_path) : 'N/A (private file)',
-                            ]);
-
-                            // Para FileUpload, el estado debe ser un array de archivos
-                            $component->state([$document->file_path]);
-
-                            Log::info('✅ COMPONENT STATE CONFIGURADO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'component_state' => [$document->file_path],
-                                'state_count' => 1,
-                            ]);
-                        } else {
-                            // Si no hay documento, estado vacío
-                            $component->state([]);
-
-                            Log::info('❌ NO HAY DOCUMENTO - STATE VACÍO', [
-                                'vessel_id' => $record->id,
-                                'document_type' => $documentType,
-                                'reason' => !$document ? 'no_document_in_db' : 'no_file_path',
-                            ]);
+                            $set($state, [$document->file_path]);
                         }
-                    } else {
-                        Log::warning('⚠️ NO HAY RECORD EN AFTERSTATEHYDRATED', [
-                            'document_type' => $documentType,
-                            'reason' => 'record_is_null'
-                        ]);
                     }
-
-                    Log::info('🔍 ===== AFTERSTATEHYDRATED COMPLETADO =====', [
-                        'vessel_id' => $record ? $record->id : 'null',
-                        'document_type' => $documentType,
-                    ]);
                 })
                 ->afterStateUpdated(function ($state, $record, $set, $component) use ($documentType, $category, $documentName) {
                     $fieldName = "document_{$documentType}";
@@ -866,23 +781,7 @@ class VesselResource extends Resource
      */
     protected static function handleDocumentUpload($file, $vessel, $documentType, $category, $documentName): void
     {
-        Log::info('🔄 handleDocumentUpload INICIADO', [
-            'file_type' => gettype($file),
-            'file_class' => is_object($file) ? get_class($file) : 'not_object',
-            'file_original_name' => is_object($file) && method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown',
-            'file_size' => is_object($file) && method_exists($file, 'getSize') ? $file->getSize() : 'unknown',
-            'vessel_id' => $vessel ? $vessel->id : 'null',
-            'vessel_name' => $vessel ? $vessel->name : 'null',
-            'document_type' => $documentType,
-            'category' => $category,
-            'document_name' => $documentName,
-        ]);
-
         if (!$file || !$vessel) {
-            Log::warning('handleDocumentUpload: Missing file or vessel', [
-                'has_file' => !empty($file),
-                'has_vessel' => !empty($vessel),
-            ]);
             return;
         }
 
@@ -897,7 +796,7 @@ class VesselResource extends Resource
             
             // Si es un TemporaryUploadedFile (objeto de Livewire)
             if (is_object($file) && method_exists($file, 'store')) {
-                Log::info("Procesando TemporaryUploadedFile: {$file->getClientOriginalName()}");
+                Log::info("📄 GUARDANDO ARCHIVO PDF: {$file->getClientOriginalName()}");
                 
                 // Generar un nombre único
                 $extension = $file->getClientOriginalExtension();
@@ -913,7 +812,7 @@ class VesselResource extends Resource
                 
             } elseif (is_string($file) && file_exists($file)) {
                 // Es una ruta de archivo temporal
-                Log::info("Procesando archivo temporal: {$file}");
+                Log::info("📄 GUARDANDO ARCHIVO TEMPORAL: {$file}");
                 
                 $fileInfo = pathinfo($file);
                 $extension = strtolower($fileInfo['extension'] ?? 'pdf');
@@ -963,35 +862,18 @@ class VesselResource extends Resource
                 'is_valid' => true,
             ]);
 
-            Log::info("✅ DOCUMENTO REGISTRADO EXITOSAMENTE", [
+            Log::info("✅ DOCUMENTO GUARDADO EN BD", [
                 'vessel_document_id' => $vesselDocument->id,
                 'document_type' => $documentType,
-                'document_name' => $documentName,
                 'file_path' => $finalPath,
-                'file_size' => $fileSize,
                 'vessel_id' => $vessel->id,
-                'vessel_name' => $vessel->name,
             ]);
-
-            // Notificar éxito
-            \Filament\Notifications\Notification::make()
-                ->title('Documento subido correctamente')
-                ->body("Se ha subido: {$documentName}")
-                ->success()
-                ->send();
             
         } catch (\Exception $e) {
-            Log::error("❌ ERROR PROCESANDO DOCUMENTO", [
+            Log::error("❌ ERROR GUARDANDO DOCUMENTO", [
                 'document_type' => $documentType,
-                'document_name' => $documentName,
-                'category' => $category,
                 'vessel_id' => $vessel ? $vessel->id : 'null',
-                'error_message' => $e->getMessage(),
-                'error_trace' => $e->getTraceAsString(),
-                'file_info' => is_object($file) ? [
-                    'class' => get_class($file),
-                    'original_name' => method_exists($file, 'getClientOriginalName') ? $file->getClientOriginalName() : 'unknown'
-                ] : 'not_object'
+                'error' => $e->getMessage(),
             ]);
 
             \Filament\Notifications\Notification::make()
