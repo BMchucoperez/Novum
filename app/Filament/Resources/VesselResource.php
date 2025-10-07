@@ -337,24 +337,73 @@ class VesselResource extends Resource
 
                         Tab::make('Documentos y Certificados Obligatorios')
                             ->icon('heroicon-o-document-text')
+                            ->badge(function ($record) {
+                                if (!$record) return null;
+                                $total = count(VesselDocumentType::getAllDocuments());
+                                $loaded = $record->vesselDocuments()->count();
+                                return "{$loaded}/{$total}";
+                            })
+                            ->badgeColor(function ($record) {
+                                if (!$record) return 'gray';
+                                $total = count(VesselDocumentType::getAllDocuments());
+                                $loaded = $record->vesselDocuments()->count();
+                                $percentage = $total > 0 ? ($loaded / $total) * 100 : 0;
+
+                                if ($percentage >= 100) return 'success';
+                                if ($percentage >= 50) return 'warning';
+                                return 'danger';
+                            })
                             ->schema([
-                                Section::make('DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO')
-                                    ->description('Documentos obligatorios relacionados con bandeira y pólizas de seguro')
+                                Section::make('📊 Resumen de Documentos')
+                                    ->description('Estado actual de la documentación de la embarcación')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('document_summary')
+                                            ->label('')
+                                            ->content(function ($record) {
+                                                if (!$record) {
+                                                    return 'Cree la embarcación para ver el resumen de documentos.';
+                                                }
+
+                                                $total = count(VesselDocumentType::getAllDocuments());
+                                                $loaded = $record->vesselDocuments()->count();
+                                                $pending = $total - $loaded;
+                                                $percentage = $total > 0 ? round(($loaded / $total) * 100) : 0;
+
+                                                $status = $percentage >= 100 ? '✅ Completo' : ($percentage >= 50 ? '⚠️ En progreso' : '❌ Incompleto');
+
+                                                return "**{$status}** | 📁 Total: {$total} | ✅ Cargados: {$loaded} | ⏳ Pendientes: {$pending} | 📊 Completitud: {$percentage}%";
+                                            })
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(false),
+
+                                Section::make('📋 DOCUMENTOS DE BANDEIRA E APÓLICES DE SEGURO')
+                                    ->description('📄 Documentos obligatorios de registro, bandeira y pólizas de seguro. Requeridos para operaciones marítimas legales.')
+                                    ->icon('heroicon-o-flag')
                                     ->schema([
                                         static::createDocumentUploadGrid('bandeira_apolices')
-                                    ]),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(false),
 
-                                Section::make('DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO')
-                                    ->description('Documentos del sistema de gestión a bordo')
+                                Section::make('⚙️ DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO')
+                                    ->description('📑 Documentos del sistema de gestión a bordo. Incluyen planes de seguridad, emergencia y procedimientos operacionales.')
+                                    ->icon('heroicon-o-cog-6-tooth')
                                     ->schema([
                                         static::createDocumentUploadGrid('sistema_gestao')
-                                    ]),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(false),
 
-                                Section::make('DOCUMENTOS EXCLUSIVOS POR TIPO DE EMBARCACIÓN')
-                                    ->description('Documentos específicos según el tipo de embarcación')
+                                Section::make('🚢 DOCUMENTOS EXCLUSIVOS POR TIPO DE EMBARCACIÓN')
+                                    ->description('📎 Documentos específicos según el tipo de embarcación (Barcaza, Empujador o Motochata). Solo los aplicables a su tipo serán solicitados.')
+                                    ->icon('heroicon-o-wrench-screwdriver')
                                     ->schema([
                                         static::createExclusiveDocumentUploadGrid()
-                                    ]),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(false),
                             ]),
 
                         Tab::make('Documentos Cargados')
@@ -704,7 +753,34 @@ class VesselResource extends Resource
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
-                ->helperText('Solo PDF y PNG. Máximo 10MB.')
+                ->helperText('📎 Formatos: PDF o PNG | 📏 Tamaño máximo: 10MB | ✅ Click para subir o arrastrar archivo aquí')
+                ->hint(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return '✅ Documento cargado';
+                        }
+                    }
+                    return '⚠️ Documento pendiente';
+                })
+                ->hintColor(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return 'success';
+                        }
+                    }
+                    return 'warning';
+                })
+                ->hintIcon(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return 'heroicon-o-check-circle';
+                        }
+                    }
+                    return 'heroicon-o-exclamation-triangle';
+                })
                 ->default(function ($record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);
@@ -743,6 +819,34 @@ class VesselResource extends Resource
                             ];
                         }, $state) : (is_string($state) ? $state : 'not_string_not_array')
                     ]);
+
+                    // DETECTAR ELIMINACIÓN DE ARCHIVO
+                    if ($record && empty($state)) {
+                        Log::info('🗑️ ARCHIVO ELIMINADO DEL CONTROL', [
+                            'vessel_id' => $record->id,
+                            'document_type' => $documentType,
+                        ]);
+
+                        // Buscar y eliminar el documento de la BD
+                        $existingDocument = $record->getDocumentByType($documentType);
+                        if ($existingDocument) {
+                            Log::info('🗑️ ELIMINANDO DOCUMENTO DE BD', [
+                                'vessel_id' => $record->id,
+                                'document_id' => $existingDocument->id,
+                                'document_type' => $documentType,
+                                'file_path' => $existingDocument->file_path,
+                            ]);
+
+                            $existingDocument->delete(); // Esto también elimina el archivo físico por el event deleting() en el modelo
+
+                            Log::info('✅ DOCUMENTO ELIMINADO EXITOSAMENTE', [
+                                'vessel_id' => $record->id,
+                                'document_type' => $documentType,
+                            ]);
+                        }
+
+                        return; // Salir después de eliminar
+                    }
 
                     if ($record && !empty($state)) {
                         // Normalizar state a array para procesamiento uniforme
@@ -1057,7 +1161,34 @@ class VesselResource extends Resource
                 })
                 ->acceptedFileTypes(['application/pdf', 'image/png'])
                 ->maxSize(10240) // 10MB
-                ->helperText('Solo PDF y PNG. Máximo 10MB.')
+                ->helperText('📎 Formatos: PDF o PNG | 📏 Tamaño máximo: 10MB | ✅ Click para subir o arrastrar archivo aquí')
+                ->hint(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return '✅ Documento cargado';
+                        }
+                    }
+                    return '⚠️ Documento pendiente';
+                })
+                ->hintColor(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return 'success';
+                        }
+                    }
+                    return 'warning';
+                })
+                ->hintIcon(function ($record) use ($documentType) {
+                    if ($record) {
+                        $document = $record->getDocumentByType($documentType);
+                        if ($document) {
+                            return 'heroicon-o-check-circle';
+                        }
+                    }
+                    return 'heroicon-o-exclamation-triangle';
+                })
                 ->default(function ($record) use ($documentType) {
                     if ($record) {
                         $document = $record->getDocumentByType($documentType);

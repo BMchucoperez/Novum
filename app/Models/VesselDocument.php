@@ -180,8 +180,12 @@ class VesselDocument extends Model
 
         static::deleting(function ($model) {
             // Eliminar archivo físico cuando se elimina el registro
-            if ($model->file_path && Storage::disk('local')->exists($model->file_path)) {
-                Storage::disk('local')->delete($model->file_path);
+            if ($model->file_path && Storage::disk('public')->exists($model->file_path)) {
+                Storage::disk('public')->delete($model->file_path);
+                \Illuminate\Support\Facades\Log::info('🗑️ ARCHIVO FÍSICO ELIMINADO', [
+                    'file_path' => $model->file_path,
+                    'document_id' => $model->id,
+                ]);
             }
         });
     }

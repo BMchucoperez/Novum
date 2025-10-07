@@ -231,6 +231,30 @@ class EditVessel extends EditRecord
             'document_ids' => $docsBeforeSave->pluck('id')->toArray(),
             'document_types' => $docsBeforeSave->pluck('document_type', 'id')->toArray(),
         ]);
+
+        // DETECTAR Y ELIMINAR DOCUMENTOS QUE FUERON REMOVIDOS DEL FORMULARIO
+        foreach ($docsBeforeSave as $document) {
+            $fieldName = "document_{$document->document_type}";
+            $fieldValue = $this->data[$fieldName] ?? null;
+
+            // Si el campo está vacío o no existe, el usuario eliminó el archivo
+            if (empty($fieldValue)) {
+                Log::info('🗑️ DETECTADO ARCHIVO ELIMINADO EN BEFORE SAVE', [
+                    'vessel_id' => $this->record->id,
+                    'document_id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'field_name' => $fieldName,
+                ]);
+
+                $document->delete();
+
+                Log::info('✅ DOCUMENTO ELIMINADO DE BD', [
+                    'vessel_id' => $this->record->id,
+                    'document_id' => $document->id,
+                    'document_type' => $document->document_type,
+                ]);
+            }
+        }
     }
 
     protected function afterSave(): void
