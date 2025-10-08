@@ -1,8 +1,32 @@
+@'
+/vendor/
+/node_modules/
+
+/public/hot
+/public/storage
+/storage/
+/storage/*.key
+/bootstrap/cache/
+
+/.env
+.env.*.backup
+.env.testing
+
+*.log
+*.cache
+.phpunit.result.cache
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Carpetas tuyas
 .qoder/
-.claude/settings.local.json
-.env
+.claude/
 CLAUDE.md
-nul
 SOLUCION_403_DOWNLOADS.md
 SOLUCION_COMPLETA_VISUALIZACION_DOCUMENTOS.md
 TESTING_FILE_REPLACEMENT.md
+'@ | Set-Content -Encoding ascii .gitignore
