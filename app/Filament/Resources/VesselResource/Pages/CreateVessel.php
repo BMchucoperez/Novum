@@ -254,7 +254,7 @@ class CreateVessel extends CreateRecord
                 if (is_array($files)) {
                     foreach ($files as $index => $file) {
                         if ($file) {
-                            Log::info("📎 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $fileCount . " de " . $fieldName, [
+                            Log::info("📎 PROCESANDO ARCHIVO " . ((int)$index + 1) . "/" . (int)$fileCount . " de " . (string)$fieldName, [
                                 'vessel_id' => $this->record->id,
                                 'file_index' => $index,
                                 'file_type' => gettype($file),
@@ -284,7 +284,7 @@ class CreateVessel extends CreateRecord
                                     'error' => $e->getMessage()
                                 ];
 
-                                Log::error("❌ ERROR PROCESANDO ARCHIVO " . $fieldName . "[" . $index . "]", [
+                                Log::error("❌ ERROR PROCESANDO ARCHIVO " . (string)$fieldName . "[" . (string)$index . "]", [
                                     'vessel_id' => $this->record->id,
                                     'error_message' => $e->getMessage(),
                                     'error_trace' => $e->getTraceAsString(),
@@ -377,7 +377,7 @@ class CreateVessel extends CreateRecord
                 if (is_array($files)) {
                     foreach ($files as $index => $file) {
                         if ($file) {
-                            Log::info("📎 PROCESANDO ARCHIVO " . ($index + 1) . "/" . $fileCount . " de " . $fieldName, [
+                            Log::info("📎 PROCESANDO ARCHIVO " . ((int)$index + 1) . "/" . (int)$fileCount . " de " . (string)$fieldName, [
                                 'vessel_id' => $this->record->id,
                                 'file_index' => $index,
                             ]);
