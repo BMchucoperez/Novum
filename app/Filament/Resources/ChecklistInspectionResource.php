@@ -513,7 +513,8 @@ class ChecklistInspectionResource extends Resource
                                             }
                                         }
                                         
-                                        return $imageOnly ? 'Suba imágenes si es necesario' : 'Suba archivos PDF o imágenes si es necesario';
+                                        // Texto con limitaciones técnicas cuando NO hay documento existente
+                                        return $imageOnly ? 'archivos permitidos • JPG, PNG | Peso máx: 10MB' : 'archivos permitidos • PDF, JPG, PNG | Peso máx: 10MB';
                                     })
                                     ->multiple()
                                     ->acceptedFileTypes($imageOnly ? ['image/jpeg', 'image/png', 'image/jpg'] : ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
