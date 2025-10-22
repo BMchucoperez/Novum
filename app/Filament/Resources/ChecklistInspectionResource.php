@@ -84,6 +84,53 @@ class ChecklistInspectionResource extends Resource
     }
 
     /**
+     * Traducción cosmética de textos en portugués a formato bilingüe para visualización
+     * NO modifica los datos almacenados, solo agrega la traducción al español para mostrar
+     */
+    protected static function translateItemForDisplay(string $item): string
+    {
+        $translations = [
+            // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO
+            'Certificado nacional de arqueação' => 'Certificado nacional de arqueação | Certificado de Arqueo',
+            'Certificado nacional de borda livre para a navegação interior' => 'Certificado nacional de borda livre para a navegação interior | Certificado de Línea Máxima de Carga',
+            'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)' => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade) | Certificado de Matrícula',
+            'Declaração de conformidade para transporte de petróleo' => 'Declaração de conformidade para transporte de petróleo | Ficha de Registro Medio de Transporte Fluvial (OSINERGMIN)',
+            'Certificado de segurança de navegação' => 'Certificado de segurança de navegação | Certificado Nacional de Seguridad para naves fluviales',
+            'Licença de operação - IPAAM' => 'Licença de operação - IPAAM',
+            'Autorização de ANP' => 'Autorização de ANP | Permiso de Operaciones para Prestar Servicio de Transporte Fluvial',
+            'Autorização de ANTAQ' => 'Autorização de ANTAQ',
+            'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA' => 'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA',
+            'Certificado de regularidade - IBAMA' => 'Certificado de regularidade - IBAMA',
+            'Certificado de registro de armador (CRA)' => 'Certificado de registro de armador (CRA)',
+            'Apolice de seguro P&I' => 'Apólice de seguro P&I | Póliza de Casco Marítimo P&I',
+            
+            // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
+            'Certificado de controle de Praga' => 'Certificado de controle de Praga | Certificado de Fumigación, Desinfección y Desratización',
+            'Plano de segurança' => 'Plano de segurança | Plano de seguridad',
+            'Plano de arranjo geral' => 'Plano de arranjo geral | Plano de disposición general',
+            'Plano de incêndio' => 'Plano de incêndio | Plano contraincendio',
+            'Operador técnico' => 'Operador técnico - DPA | Operador técnico - DPA',
+            'Crew List' => 'Crew List | Crew List',
+            'Plano de rede de carga e descarga' => 'Plano de rede de carga e descarga | Plano del sistema de carga y descarga',
+            'Plano de caoacidade de tanques' => 'Plano de capacidade de tanques | Plano de disposición de tanques',
+            'Certificado de teste pneumático dos tanques de armazenamento de óleo' => 'Certificado de teste pneumático dos tanques de armazenamento de óleo | Certificado de Prueba de Estanqueidad de los Tanques de Carga',
+            'Certificado de Teste da rede de carga / descarga' => 'Certificado de Teste da rede de carga / descarga | Certificado de Prueba Hidrostática del Sistema de Carga y Descarga',
+            'Certificado de Teste da válvula de pressão e vácuo' => 'Certificado de Teste da válvula de pressão e vácuo | Certificado de Prueba de Válvulas de Presión y Vacío',
+            'Certificado de Teste da válvula de pressão e vácuo ' => 'Certificado de Teste da válvula de pressão e vácuo | Certificado de Prueba de Válvulas de Presión y Vacío',
+            'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP' => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP | Plan de emergencia a bordo para casos de derrame de hidrocarburos – Plan SOPEP',
+            'Plano de contingência' => 'Plano de contingência | Plan de contingencia',
+            'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio' => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio | Certificados de Prueba Hidrostática y Mantenimiento de los Extintores',
+            
+            // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
+            'Cartão de tripulação de segurança (CTS)' => 'Cartão de tripulação de segurança (CTS) | Certificado de Dotación Mínima',
+            'Licença de estação de navio' => 'Licença de estação de navio | Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
+        ];
+
+        // Devolver la traducción bilingüe si existe, sino devolver el texto original
+        return $translations[$item] ?? $item;
+    }
+
+    /**
      * Obtener documentos existentes para una embarcación específica
      */
     protected static function getVesselDocuments(?int $vesselId): array
@@ -704,24 +751,18 @@ class ChecklistInspectionResource extends Resource
                 $estado = $state['estado'] ?? '';
                 $prioridad = $state['prioridad'] ?? 3;
                 
-                // $statusIcon = match($estado) {
-                //     'V' => '🟢',
-                //     'A' => '🟡', 
-                //     'N' => '🟠',
-                //     'R' => '🔴',
-                //     default => ''
-                // };
+                // Traducir el item para visualización (solo UI, no modifica datos)
+                $itemTranslated = static::translateItemForDisplay($item);
                 
-                        // Mostrar prioridad como emoji al lado del nombre del ítem
-        $prioridad = $state['prioridad'] ?? 3;
-        $prioridadEmoji = match($prioridad) {
-            1 => '🔴',
-            2 => '🟡',
-            3 => '🟢',
-            default => ''
-        };
-        
-        return "{$prioridadEmoji} {$item}";
+                // Mostrar prioridad como emoji al lado del nombre del ítem
+                $prioridadEmoji = match($prioridad) {
+                    1 => '🔴',
+                    2 => '🟡',
+                    3 => '🟢',
+                    default => ''
+                };
+                
+                return "{$prioridadEmoji} {$itemTranslated}";
             });
     }
 
