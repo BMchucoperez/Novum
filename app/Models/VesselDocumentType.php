@@ -88,12 +88,12 @@ class VesselDocumentType
     public static function getEmpujadorExclusiveDocuments(): array
     {
         return [
-            self::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS)',
-            self::LICENCA_ESTACAO => 'Licença de estação de navio',
-            self::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga',
-            self::PLANO_INCENDIO => 'Plano de incêndio',
-            self::OPERADOR_TECNICO => 'Operador técnico',
-            self::CREW_LIST => 'Crew List',
+            self::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS) | Certificado de Dotación Mínima',
+            self::LICENCA_ESTACAO => 'Licença de estação de navio | Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
+            self::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga | Certificado de Fumigación, Desinfección y Desratización',
+            self::PLANO_INCENDIO => 'Plano de incêndio | Plano contraincendio',
+            self::OPERADOR_TECNICO => 'Operador técnico - DPA | Operador técnico - DPA',
+            self::CREW_LIST => 'Crew List | Crew List',
         ];
     }
 
@@ -114,9 +114,9 @@ class VesselDocumentType
     public static function getSistemaGestaoDocuments(): array
     {
         return [
-            self::PLANO_SEGURANCA => 'Plano de segurança',
-            self::PLANO_ARRANJO => 'Plano de arranjo geral',
-            self::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio',
+            self::PLANO_SEGURANCA => 'Plano de segurança | Plano de seguridad',
+            self::PLANO_ARRANJO => 'Plano de arranjo geral | Plano de disposición general',
+            self::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio | Certificados de Prueba Hidrostática y Mantenimiento de los Extintores',
         ];
     }
 
