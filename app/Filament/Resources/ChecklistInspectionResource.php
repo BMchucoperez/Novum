@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\VesselDocument;
 use App\Models\VesselDocumentType;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -89,44 +90,47 @@ class ChecklistInspectionResource extends Resource
      */
     protected static function translateItemForDisplay(string $item): string
     {
+        // Imágenes de banderas desde CDN (flag-icons)
+        $flagBR = '<img src="https://flagcdn.com/16x12/br.png" srcset="https://flagcdn.com/32x24/br.png 2x, https://flagcdn.com/48x36/br.png 3x" width="16" height="12" alt="Brasil" style="margin-right:4px;vertical-align:middle;display:inline-block;">';
+        $flagPE = '<img src="https://flagcdn.com/16x12/pe.png" srcset="https://flagcdn.com/32x24/pe.png 2x, https://flagcdn.com/48x36/pe.png 3x" width="16" height="12" alt="Perú" style="margin-right:4px;vertical-align:middle;display:inline-block;">';
+        
         $translations = [
             // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO
-            'Certificado nacional de arqueação' => 'Certificado nacional de arqueação | Certificado de Arqueo',
-            'Certificado nacional de borda livre para a navegação interior' => 'Certificado nacional de borda livre para a navegação interior | Certificado de Línea Máxima de Carga',
-            'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)' => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade) | Certificado de Matrícula',
-            'Declaração de conformidade para transporte de petróleo' => 'Declaração de conformidade para transporte de petróleo | Ficha de Registro Medio de Transporte Fluvial (OSINERGMIN)',
-            'Certificado de segurança de navegação' => 'Certificado de segurança de navegação | Certificado Nacional de Seguridad para naves fluviales',
-            'Licença de operação - IPAAM' => 'Licença de operação - IPAAM',
-            'Autorização de ANP' => 'Autorização de ANP | Permiso de Operaciones para Prestar Servicio de Transporte Fluvial',
-            'Autorização de ANTAQ' => 'Autorização de ANTAQ',
-            'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA' => 'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA',
-            'Certificado de regularidade - IBAMA' => 'Certificado de regularidade - IBAMA',
-            'Certificado de registro de armador (CRA)' => 'Certificado de registro de armador (CRA)',
-            'Apolice de seguro P&I' => 'Apólice de seguro P&I | Póliza de Casco Marítimo P&I',
+            'Certificado nacional de arqueação' => $flagBR . 'Certificado nacional de arqueação&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Arqueo',
+            'Certificado nacional de borda livre para a navegação interior' => $flagBR . 'Certificado nacional de borda livre para a navegação interior&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Línea Máxima de Carga',
+            'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)' => $flagBR . 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Matrícula',
+            'Declaração de conformidade para transporte de petróleo' => $flagBR . 'Declaração de conformidade para transporte de petróleo&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Ficha de Registro Medio de Transporte Fluvial (OSINERGMIN)',
+            'Certificado de segurança de navegação' => $flagBR . 'Certificado de segurança de navegação&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado Nacional de Seguridad para naves fluviales',
+            'Licença de operação - IPAAM' => $flagBR . 'Licença de operação - IPAAM',
+            'Autorização de ANP' => $flagBR . 'Autorização de ANP&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Permiso de Operaciones para Prestar Servicio de Transporte Fluvial',
+            'Autorização de ANTAQ' => $flagBR . 'Autorização de ANTAQ',
+            'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA' => $flagBR . 'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA',
+            'Certificado de regularidade - IBAMA' => $flagBR . 'Certificado de regularidade - IBAMA',
+            'Certificado de registro de armador (CRA)' => $flagBR . 'Certificado de registro de armador (CRA)',
+            'Apolice de seguro P&I' => $flagBR . 'Apólice de seguro P&I&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Póliza de Casco Marítimo P&I',
             
             // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
-            'Certificado de controle de Praga' => 'Certificado de controle de Praga | Certificado de Fumigación, Desinfección y Desratización',
-            'Plano de segurança' => 'Plano de segurança | Plano de seguridad',
-            'Plano de arranjo geral' => 'Plano de arranjo geral | Plano de disposición general',
-            'Plano de incêndio' => 'Plano de incêndio | Plano contraincendio',
-            'Operador técnico' => 'Operador técnico - DPA | Operador técnico - DPA',
-            'Crew List' => 'Crew List | Crew List',
-            'Plano de rede de carga e descarga' => 'Plano de rede de carga e descarga | Plano del sistema de carga y descarga',
-            'Plano de caoacidade de tanques' => 'Plano de capacidade de tanques | Plano de disposición de tanques',
-            'Certificado de teste pneumático dos tanques de armazenamento de óleo' => 'Certificado de teste pneumático dos tanques de armazenamento de óleo | Certificado de Prueba de Estanqueidad de los Tanques de Carga',
-            'Certificado de Teste da rede de carga / descarga' => 'Certificado de Teste da rede de carga / descarga | Certificado de Prueba Hidrostática del Sistema de Carga y Descarga',
-            'Certificado de Teste da válvula de pressão e vácuo' => 'Certificado de Teste da válvula de pressão e vácuo | Certificado de Prueba de Válvulas de Presión y Vacío',
-            'Certificado de Teste da válvula de pressão e vácuo ' => 'Certificado de Teste da válvula de pressão e vácuo | Certificado de Prueba de Válvulas de Presión y Vacío',
-            'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP' => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP | Plan de emergencia a bordo para casos de derrame de hidrocarburos – Plan SOPEP',
-            'Plano de contingência' => 'Plano de contingência | Plan de contingencia',
-            'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio' => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio | Certificados de Prueba Hidrostática y Mantenimiento de los Extintores',
+            'Certificado de controle de Praga' => $flagBR . 'Certificado de controle de Praga&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Fumigación, Desinfección y Desratización',
+            'Plano de segurança' => $flagBR . 'Plano de segurança&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano de seguridad',
+            'Plano de arranjo geral' => $flagBR . 'Plano de arranjo geral&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano de disposición general',
+            'Plano de incêndio' => $flagBR . 'Plano de incêndio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano contraincendio',
+            'Operador técnico' => $flagBR . 'Operador técnico - DPA&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Operador técnico - DPA',
+            'Crew List' => $flagBR . 'Crew List&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Crew List',
+            'Plano de rede de carga e descarga' => $flagBR . 'Plano de rede de carga e descarga&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano del sistema de carga y descarga',
+            'Plano de caoacidade de tanques' => $flagBR . 'Plano de capacidade de tanques&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano de disposición de tanques',
+            'Certificado de teste pneumático dos tanques de armazenamento de óleo' => $flagBR . 'Certificado de teste pneumático dos tanques de armazenamento de óleo&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Prueba de Estanqueidad de los Tanques de Carga',
+            'Certificado de Teste da rede de carga / descarga' => $flagBR . 'Certificado de Teste da rede de carga / descarga&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Prueba Hidrostática del Sistema de Carga y Descarga',
+            'Certificado de Teste da válvula de pressão e vácuo' => $flagBR . 'Certificado de Teste da válvula de pressão e vácuo&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Prueba de Válvulas de Presión y Vacío',
+            'Certificado de Teste da válvula de pressão e vácuo ' => $flagBR . 'Certificado de Teste da válvula de pressão e vácuo&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Prueba de Válvulas de Presión y Vacío',
+            'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP' => $flagBR . 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plan de emergencia a bordo para casos de derrame de hidrocarburos – Plan SOPEP',
+            'Plano de contingência' => $flagBR . 'Plano de contingência&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plan de contingencia',
+            'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio' => $flagBR . 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificados de Prueba Hidrostática y Mantenimiento de los Extintores',
             
             // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
-            'Cartão de tripulação de segurança (CTS)' => 'Cartão de tripulação de segurança (CTS) | Certificado de Dotación Mínima',
-            'Licença de estação de navio' => 'Licença de estação de navio | Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
+            'Cartão de tripulação de segurança (CTS)' => $flagBR . 'Cartão de tripulação de segurança (CTS)&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Dotación Mínima',
+            'Licença de estação de navio' => $flagBR . 'Licença de estação de navio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
         ];
 
-        // Devolver la traducción bilingüe si existe, sino devolver el texto original
         return $translations[$item] ?? $item;
     }
 
@@ -746,7 +750,7 @@ class ChecklistInspectionResource extends Resource
             ->reorderable(false)
             ->collapsible()
             ->collapsed(true)
-            ->itemLabel(function (array $state): ?string {
+            ->itemLabel(function (array $state) {
                 $item = $state['item'] ?? 'Nuevo ítem';
                 $estado = $state['estado'] ?? '';
                 $prioridad = $state['prioridad'] ?? 3;
@@ -762,7 +766,8 @@ class ChecklistInspectionResource extends Resource
                     default => ''
                 };
                 
-                return "{$prioridadEmoji} {$itemTranslated}";
+                // Retornar HtmlString con contenedor en una sola línea
+                return new HtmlString('<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' . $prioridadEmoji . ' ' . $itemTranslated . '</div>');
             });
     }
 
