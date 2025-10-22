@@ -51,17 +51,17 @@ class VesselDocumentType
     public static function getBandeiraApolicesDocuments(): array
     {
         return [
-            self::CERTIFICADO_ARQUEACAO => 'Certificado nacional de arqueação',
-            self::CERTIFICADO_BORDA_LIVRE => 'Certificado nacional de borda livre para a navegação interior',
-            self::PROVISAO_REGISTRO => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)',
-            self::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação',
-            self::LICENCA_IPAAM => 'Licença de operação - IPAAM',
-            self::AUTORIZACAO_ANP => 'Autorização de ANP',
-            self::AUTORIZACAO_ANTAQ => 'Autorização de ANTAQ',
-            self::AUTORIZACAO_IBAMA => 'Autorização ambiental Para o transporte interestadual de produtos perigosos - IBAMA',
+            self::CERTIFICADO_ARQUEACAO => 'Certificado nacional de arqueação | Certificado de Arqueo',
+            self::CERTIFICADO_BORDA_LIVRE => 'Certificado nacional de borda livre para a navegação interior | Certificado de Línea Máxima de Carga',
+            self::PROVISAO_REGISTRO => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade) | Certificado de Matrícula',
+            self::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação | Certificado Nacional de Seguridad para naves fluviales',
+            self::LICENCA_IPAAM => 'Licença de operação - IPAAM | Certificado Nacional de Aprobación del Plan de Emergencia de a Bordo Contra la Contaminación del Medio Acuático por Hidrocarburos y/o Sustancias Nocivas Líquidas',
+            self::AUTORIZACAO_ANP => 'Autorização de ANP | Permiso de Operaciones para Prestar Servicio de Transporte Fluvial',
+            self::AUTORIZACAO_ANTAQ => 'Autorização de ANTAQ | Certificado de Seguro de Responsabilidad Civil por Daños Causados por la Contaminación por Hidrocarburos',
+            self::AUTORIZACAO_IBAMA => 'Autorização ambiental para o transporte interestadual de produtos perigosos - IBAMA | Certificado de Aptitud para el Transporte Marítimo de Mercancías Peligrosas',
             self::CERTIFICADO_REGULARIDADE => 'Certificado de regularidade - IBAMA',
-            self::CERTIFICADO_ARMADOR => 'Certificado de registro de armador (CRA)',
-            self::APOLICE_SEGURO => 'Apolice de seguro P&I',
+            self::CERTIFICADO_ARMADOR => 'Certificado de registro de armador (CRA) | Certificado de Cumplimiento Relativo al Doble Casco',
+            self::APOLICE_SEGURO => 'Apólice de seguro P&I | Póliza de Casco Marítimo P&I',
         ];
     }
 
@@ -71,9 +71,9 @@ class VesselDocumentType
     public static function getBarcazaExclusiveDocuments(): array
     {
         return [
-            self::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
+            self::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo | Ficha de Registro Medio de Transporte Fluvial (OSINERGMIN)',
             self::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
-            self::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
+            self::PLANO_CAPACIDADE => 'Plano de capacidade de tanques',
             self::PLANO_CONTINGENCIA => 'Plano de contingência',
             self::CERTIFICADO_PNEUMATICO => 'Certificado de teste pneumático dos tanques de armazenamento de óleo',
             self::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
