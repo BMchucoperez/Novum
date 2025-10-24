@@ -178,7 +178,6 @@
         /* CONTENIDO PRINCIPAL */
         .content-page {
             padding: 30px 35px;
-            page-break-before: always;
             margin: 0;
         }
 
@@ -246,8 +245,8 @@
 
         .info-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px 30px;
+            grid-template-columns: 1fr;
+            gap: 12px 0;
         }
 
         .info-grid.full {
@@ -310,8 +309,8 @@
         }
 
         .parte-title {
-            background: linear-gradient(90deg, var(--primary), var(--primary-light));
-            color: white;
+            background: #1a3a5c !important;
+            color: white !important;
             padding: 12px 18px;
             font-size: 11.5pt;
             font-weight: 700;
@@ -559,7 +558,7 @@
         }
 
         .break-before {
-            page-break-before: always;
+            /* page-break-before: always; */ /* DESACTIVADO: causaba páginas en blanco */
         }
     </style>
 </head>
@@ -684,11 +683,11 @@
                                     </td>
                                     <td class="col-estado">
                                         @if($item['estado'] == 'A')
-                                            <span class="estado-badge estado-A">✓ Apto</span>
+                                            <span class="estado-badge estado-A">Apto</span>
                                         @elseif($item['estado'] == 'N')
-                                            <span class="estado-badge estado-N">✗ No Apto</span>
+                                            <span class="estado-badge estado-N">No Apto</span>
                                         @elseif($item['estado'] == 'O')
-                                            <span class="estado-badge estado-O">⚠ Observado</span>
+                                            <span class="estado-badge estado-O">Observado</span>
                                         @else
                                             <span style="color: #999; font-size: 8pt;">No evaluado</span>
                                         @endif
