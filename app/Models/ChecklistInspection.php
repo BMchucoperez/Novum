@@ -525,6 +525,16 @@ class ChecklistInspection extends Model
 
     /**
      * Calcula el estado general automáticamente según los estados de todos los ítems de todas las partes.
+     *
+     * Lógica de evaluación según LOGICA_EVALUACION_CONCEPTUAL_IA.md:
+     * - Si existe al menos un ítem con estado 'N' (NO APTO) → Resultado: NO APTO
+     * - Si no hay 'N' pero existe al menos un ítem con estado 'O' (OBSERVADO) → Resultado: OBSERVADO
+     * - Si todos los ítems tienen estado 'A' (APTO) → Resultado: APTO
+     *
+     * Valores de estado:
+     * - 'A' = APTO (Cumple con los requisitos)
+     * - 'N' = NO APTO (No cumple - Prioridad 1 Crítica)
+     * - 'O' = OBSERVADO (No cumple - Prioridad 2-3 No crítica)
      */
     public function calculateOverallStatus(): string
     {
@@ -537,17 +547,24 @@ class ChecklistInspection extends Model
                 }
             }
         }
+
+        // Si no hay estados evaluados, retornar APTO por defecto
         if (empty($allEstados)) {
-            return 'APTO'; // Por defecto si no hay estados
+            return 'APTO';
         }
-        
-        // Prioridad de estados: NO APTO > OBSERVADO > APTO
-        if (in_array('NO APTO', $allEstados, true) || in_array('R', $allEstados, true)) {
+
+        // Paso 1: Verificar si existe algún ítem NO APTO (crítico)
+        // Principio de severidad máxima: un solo incumplimiento crítico rechaza toda la inspección
+        if (in_array('N', $allEstados, true)) {
             return 'NO APTO';
         }
-        if (in_array('OBSERVADO', $allEstados, true) || in_array('N', $allEstados, true) || in_array('A', $allEstados, true)) {
+
+        // Paso 2: Si no hay NO APTO, verificar si existe algún ítem OBSERVADO (no crítico)
+        if (in_array('O', $allEstados, true)) {
             return 'OBSERVADO';
         }
+
+        // Paso 3: Si no hay NO APTO ni OBSERVADO, todos los ítems están APTO
         return 'APTO';
     }
 
