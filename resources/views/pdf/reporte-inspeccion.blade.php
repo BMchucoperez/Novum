@@ -6,13 +6,21 @@
     <style>
         @page {
             size: A4;
-            margin: 0;
+            margin: 15mm 15mm 20mm 15mm;
             padding: 0;
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9pt;
+                color: #666;
+            }
         }
 
         @page :first {
             margin: 0;
             padding: 0;
+            @bottom-center {
+                content: none;
+            }
         }
 
         * {
@@ -46,15 +54,19 @@
         .cover-page {
             page-break-after: always;
             width: 100%;
-            height: 297mm;
+            min-height: 100vh;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             color: white;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            padding: 50px;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 50px;
             position: relative;
             overflow: hidden;
+            margin: 0;
+            padding-top: 60px;
+            padding-bottom: 60px;
         }
 
         .cover-page::before {
@@ -85,85 +97,97 @@
             position: relative;
             z-index: 1;
             text-align: center;
+            margin-bottom: 40px;
+            width: 100%;
         }
 
         .cover-logo {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .cover-logo img {
-            max-height: 80px;
+            max-height: 70px;
             display: inline-block;
         }
 
         .cover-title {
-            font-size: 48pt;
+            font-size: 42pt;
             font-weight: bold;
-            margin-bottom: 20px;
-            line-height: 1.2;
+            margin: 15px 0;
+            line-height: 1.1;
+            letter-spacing: 1px;
         }
 
         .cover-subtitle {
-            font-size: 18pt;
+            font-size: 16pt;
             font-weight: 300;
-            margin-bottom: 50px;
+            margin-bottom: 30px;
             opacity: 0.95;
+            letter-spacing: 0.5px;
         }
 
         .cover-content {
             position: relative;
             z-index: 1;
-            flex: 1;
+            width: 100%;
+            max-width: 500px;
+            margin: 30px auto;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
         .cover-info-block {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.12);
             border-left: 4px solid white;
-            padding: 20px;
-            margin-bottom: 15px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
             backdrop-filter: blur(10px);
         }
 
         .cover-info-label {
-            font-size: 9pt;
-            opacity: 0.8;
+            font-size: 8pt;
+            opacity: 0.85;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+            font-weight: 600;
         }
 
         .cover-info-value {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
+            line-height: 1.3;
         }
 
         .cover-footer {
             position: relative;
             z-index: 1;
             border-top: 2px solid rgba(255,255,255,0.3);
-            padding-top: 30px;
+            padding-top: 25px;
             text-align: center;
+            margin-top: 40px;
+            width: 100%;
         }
 
         .cover-date {
-            font-size: 11pt;
+            font-size: 10pt;
             opacity: 0.9;
+            font-weight: 500;
         }
 
         /* CONTENIDO PRINCIPAL */
         .content-page {
-            padding: 40px 40px;
+            padding: 30px 35px;
             page-break-before: always;
+            margin: 0;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            padding-top: 10px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            padding-top: 5px;
             border-bottom: 3px solid var(--primary);
             position: relative;
         }
@@ -178,26 +202,27 @@
         }
 
         .header-logo {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .header-logo img {
-            max-height: 50px;
+            max-height: 45px;
             display: inline-block;
         }
 
         .header h1 {
             color: var(--primary);
-            font-size: 20pt;
-            margin-bottom: 5px;
+            font-size: 18pt;
+            margin: 8px 0 3px 0;
             font-weight: 700;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .header p {
             color: var(--text-light);
-            font-size: 9pt;
+            font-size: 8.5pt;
             margin: 0;
+            font-weight: 500;
         }
 
         /* SECCIONES DE INFORMACIÓN */
@@ -314,16 +339,20 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
+        .items-table thead {
+            background: linear-gradient(180deg, #1F4E79, #1a3a5c) !important;
+        }
+
         .items-table thead th {
-            background: linear-gradient(180deg, var(--primary-light), var(--primary));
-            color: white;
-            padding: 10px 12px;
+            background: inherit !important;
+            color: white !important;
+            padding: 12px 12px;
             text-align: left;
             font-size: 8.5pt;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            border: 1px solid var(--primary);
+            border: 1px solid #1a3a5c !important;
             vertical-align: middle;
         }
 
@@ -574,9 +603,9 @@
         </div>
 
         <div class="cover-footer">
-            <div class="cover-date">{{ now()->format('d \d\e F \d\e Y') }}</div>
-            <div style="font-size: 8pt; margin-top: 10px; opacity: 0.7;">
-                Inspector: {{ $inspection->inspector_name ?? 'No asignado' }}
+            <div class="cover-date">{{ now()->format('d/m/Y') }}</div>
+            <div style="font-size: 8pt; margin-top: 8px; opacity: 0.8;">
+                <strong>Inspector:</strong> {{ $inspection->inspector_name ?? 'No asignado' }}
             </div>
         </div>
     </div>
@@ -590,7 +619,7 @@
                 <img src="{{ public_path('images/logo.png') }}" alt="Logo Novum Energy">
             </div>
             <h1>INFORME DE INSPECCIÓN CHECKLIST</h1>
-            <p>{{ now()->format('d de F de Y') }}</p>
+            <p>{{ now()->format('d/m/Y') }}</p>
         </div>
 
         <!-- Información General -->
@@ -614,9 +643,9 @@
                     <span class="info-value">{{ $inspection->inspection_start_date->format('d/m/Y') }} - {{ $inspection->inspection_end_date ? $inspection->inspection_end_date->format('d/m/Y') : 'En proceso' }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Estado General</span>
+                    <span class="info-label">Estado General de Inspección</span>
                     <span class="info-value">
-                        <span class="status-badge status-{{ strtolower(str_replace(' ', '-', $inspection->overall_status)) }}">
+                        <span class="status-badge status-{{ strtolower(str_replace(' ', '-', $inspection->overall_status)) }}" style="display: inline-block;">
                             {{ strtoupper($inspection->overall_status) }}
                         </span>
                     </span>
