@@ -445,7 +445,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('🔍 Parte 1')
                             ->label('DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(12)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_1_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_1_items', '📋 Items de Evaluación - Parte 1', 1),
                             ]),
@@ -453,7 +453,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('⚙️ Parte 2')
                             ->label('DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(11)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_2_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_2_items', '🔧 Items de Evaluación - Parte 2', 2),
                             ]),
@@ -461,7 +461,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('🛡️ Parte 3')
                             ->label('CASCO Y ESTRUTURAS')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(25)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_3_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_3_items', '🛡️ Items de Evaluación - Parte 3', 3, true), // true for image-only attachments
                             ]),
@@ -469,7 +469,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('📊 Parte 4')
                             ->label('SISTEMAS DE CARGA E DESCARGA E DE ALARME DE NIVEL')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(22)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_4_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_4_items', '📊 Items de Evaluación - Parte 4', 4, true), // true for image-only attachments
                             ]),
@@ -477,7 +477,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('🔧 Parte 5')
                             ->label('SEGURANÇA, SALVAMENTO, CONTRA INCÊNDIO E LUZES DE NAVEGAÇÃO')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(18)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_5_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_5_items', '🔧 Items de Evaluación - Parte 5', 5, true), // true for image-only attachments
                             ]),
@@ -485,7 +485,7 @@ class ChecklistInspectionResource extends Resource
                         Tabs\Tab::make('✅ Parte 6')
                             ->label('SISTEMA DE AMARRAÇÃO')
                             ->icon('heroicon-o-clipboard-document-check')
-                            ->badge(8)
+                            ->badge(fn (Forms\Get $get): int => count($get('parte_6_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_6_items', '✅ Items de Evaluación - Parte 6', 6, true), // true for image-only attachments
                             ]),
