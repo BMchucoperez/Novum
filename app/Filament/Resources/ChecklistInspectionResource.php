@@ -23,6 +23,7 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ChecklistInspectionResource extends Resource
 {
@@ -87,13 +88,23 @@ class ChecklistInspectionResource extends Resource
     /**
      * Traducción cosmética de textos en portugués a formato bilingüe para visualización
      * NO modifica los datos almacenados, solo agrega la traducción al español para mostrar
+     *
+     * @param string $itemPT - Texto en portugués
+     * @param string|null $itemES - Texto en español (opcional, si existe en DB)
+     * @return string - HTML con banderas y texto bilingüe
      */
-    protected static function translateItemForDisplay(string $item): string
+    protected static function translateItemForDisplay(string $itemPT, ?string $itemES = null): string
     {
         // Imágenes de banderas desde CDN (flag-icons)
         $flagBR = '<img src="https://flagcdn.com/16x12/br.png" srcset="https://flagcdn.com/32x24/br.png 2x, https://flagcdn.com/48x36/br.png 3x" width="16" height="12" alt="Brasil" style="margin-right:4px;vertical-align:middle;display:inline-block;">';
         $flagPE = '<img src="https://flagcdn.com/16x12/pe.png" srcset="https://flagcdn.com/32x24/pe.png 2x, https://flagcdn.com/48x36/pe.png 3x" width="16" height="12" alt="Perú" style="margin-right:4px;vertical-align:middle;display:inline-block;">';
-        
+
+        // Si ya tenemos la traducción en español (desde la DB), usarla directamente
+        if (!empty($itemES)) {
+            return $flagBR . $itemPT . '&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . $itemES;
+        }
+
+        // Si no, buscar en el diccionario de traducciones (para compatibilidad con registros antiguos)
         $translations = [
             // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO (BARCAZA)
             'Certificado nacional de arqueação' => $flagBR . 'Certificado nacional de arqueação&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Arqueo',
@@ -258,7 +269,7 @@ class ChecklistInspectionResource extends Resource
             'Licença de estação de navio' => $flagBR . 'Licença de estação de navio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
         ];
 
-        return $translations[$item] ?? $item;
+        return $translations[$itemPT] ?? $itemPT;
     }
 
     /**
@@ -879,11 +890,13 @@ class ChecklistInspectionResource extends Resource
             ->collapsed(true)
             ->itemLabel(function (array $state) {
                 $item = $state['item'] ?? 'Nuevo ítem';
+                $itemES = $state['item_es'] ?? null;  // Traducción en español si existe
                 $estado = $state['estado'] ?? '';
                 $prioridad = $state['prioridad'] ?? 3;
-                
+
                 // Traducir el item para visualización (solo UI, no modifica datos)
-                $itemTranslated = static::translateItemForDisplay($item);
+                // Si existe 'item_es' en la DB, lo usa; si no, usa el diccionario
+                $itemTranslated = static::translateItemForDisplay($item, $itemES);
                 
                 // Mostrar prioridad como emoji al lado del nombre del ítem
                 $prioridadEmoji = match($prioridad) {
@@ -1023,6 +1036,13 @@ class ChecklistInspectionResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('download_pdf')
+                    ->label('Descargar PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (ChecklistInspection $record) {
+                        return static::downloadPDF($record);
+                    }),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -1081,6 +1101,82 @@ class ChecklistInspectionResource extends Resource
     // {
     //     return static::getModel()::count();
     // }
+
+    /**
+     * Genera y descarga el PDF de la inspección
+     */
+    public static function downloadPDF(ChecklistInspection $inspection)
+    {
+        // Preparar datos para el PDF
+        $partes = [];
+        $stats = [
+            'apto' => 0,
+            'no_apto' => 0,
+            'observado' => 0,
+            'total' => 0,
+        ];
+
+        // Títulos de las partes
+        $parteTitles = [
+            1 => 'Parte 1 - Documentos de Bandera y Pólizas',
+            2 => 'Parte 2 - Sistema de Gestión',
+            3 => 'Parte 3 - Casco y Estructuras',
+            4 => 'Parte 4 - Sistemas de Carga/Descarga',
+            5 => 'Parte 5 - Seguridad y Luces de Navegación',
+            6 => 'Parte 6 - Sistemas de Amarre',
+        ];
+
+        // Recopilar datos de cada parte
+        for ($i = 1; $i <= 6; $i++) {
+            $items = $inspection->getAttribute('parte_' . $i . '_items') ?? [];
+
+            if (!empty($items)) {
+                $partes[$i] = [
+                    'title' => $parteTitles[$i],
+                    'items' => $items,
+                ];
+
+                // Contar estados
+                foreach ($items as $item) {
+                    $estado = $item['estado'] ?? '';
+                    if (!empty($estado)) {
+                        $stats['total']++;
+                        if ($estado === 'A') $stats['apto']++;
+                        elseif ($estado === 'N') $stats['no_apto']++;
+                        elseif ($estado === 'O') $stats['observado']++;
+                    }
+                }
+            }
+        }
+
+        // Generar PDF
+        $pdf = Pdf::loadView('pdf.checklist-inspection', [
+            'inspection' => $inspection,
+            'partes' => $partes,
+            'stats' => $stats,
+        ]);
+
+        // Configurar PDF
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', false);
+
+        // Nombre del archivo
+        $fileName = 'Inspeccion_' . $inspection->vessel->name . '_' . now()->format('Y-m-d') . '.pdf';
+        $fileName = str_replace(' ', '_', $fileName);
+
+        // Guardar en public/pdfs/
+        $publicPath = public_path('pdfs');
+        if (!file_exists($publicPath)) {
+            mkdir($publicPath, 0755, true);
+        }
+
+        $filePath = $publicPath . '/' . $fileName;
+        $pdf->save($filePath);
+
+        // Descargar
+        return response()->download($filePath, $fileName)->deleteFileAfterSend(true);
+    }
 
     public static function getPages(): array
     {

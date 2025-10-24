@@ -13,6 +13,11 @@ class ViewChecklistInspection extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('download_pdf')
+                ->label('Descargar PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(fn () => ChecklistInspectionResource::downloadPDF($this->record)),
             Actions\EditAction::make(),
             Actions\DeleteAction::make(),
         ];

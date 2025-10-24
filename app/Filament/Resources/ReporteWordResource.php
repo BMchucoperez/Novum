@@ -20,6 +20,7 @@ use App\Models\Owner;
 use App\Models\Vessel;
 use Illuminate\Support\Facades\Log;
 use App\Filament\Resources\ReporteWordResource\Pages;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReporteWordResource extends Resource
 {
