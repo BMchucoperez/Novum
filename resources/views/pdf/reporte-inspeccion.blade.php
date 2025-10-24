@@ -54,19 +54,18 @@
         .cover-page {
             page-break-after: always;
             width: 100%;
-            min-height: 100vh;
+            height: auto;
+            max-height: 85vh;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 40px 50px;
+            padding: 35px 45px;
             position: relative;
             overflow: hidden;
             margin: 0;
-            padding-top: 60px;
-            padding-bottom: 60px;
         }
 
         .cover-page::before {
@@ -340,11 +339,11 @@
         }
 
         .items-table thead {
-            background: linear-gradient(180deg, #1F4E79, #1a3a5c) !important;
+            background: #1a3a5c !important;
         }
 
         .items-table thead th {
-            background: inherit !important;
+            background: #1a3a5c !important;
             color: white !important;
             padding: 12px 12px;
             text-align: left;
@@ -352,7 +351,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            border: 1px solid #1a3a5c !important;
+            border: 1px solid #0f2640 !important;
             vertical-align: middle;
         }
 
