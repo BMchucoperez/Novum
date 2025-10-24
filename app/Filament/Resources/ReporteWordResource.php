@@ -30,11 +30,11 @@ class ReporteWordResource extends Resource
 
     protected static ?string $navigationGroup = 'Reportes';
 
-    protected static ?string $navigationLabel = 'Generar Reporte Word';
+    protected static ?string $navigationLabel = 'Generar Reporte';
 
-    protected static ?string $modelLabel = 'Reporte Word';
+    protected static ?string $modelLabel = 'Reporte';
 
-    protected static ?string $pluralModelLabel = 'Reportes Word';
+    protected static ?string $pluralModelLabel = 'Reportes';
 
     protected static ?int $navigationSort = 1;
 
@@ -85,7 +85,7 @@ class ReporteWordResource extends Resource
 
                 Forms\Components\Actions::make([
                     Forms\Components\Actions\Action::make('generate_report')
-                        ->label('Generar Reportes (Word + PDF)')
+                        ->label('Generar Reporte')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('success')
                         ->action(function ($livewire) {
@@ -166,7 +166,7 @@ class ReporteWordResource extends Resource
                             }
                         })
                         ->requiresConfirmation()
-                        ->modalHeading('Generar Reporte Word')
+                        ->modalHeading('Generar Reporte')
                         ->modalDescription('¿Está seguro de que desea generar el reporte Word para esta inspección?')
                         ->modalSubmitActionLabel('Generar Reporte')
                 ])
