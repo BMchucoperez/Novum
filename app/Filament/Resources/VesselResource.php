@@ -354,30 +354,6 @@ class VesselResource extends Resource
                                 return 'danger';
                             })
                             ->schema([
-                                Section::make('📊 Resumen de Documentos')
-                                    ->description('Estado actual de la documentación de la embarcación')
-                                    ->schema([
-                                        Forms\Components\Placeholder::make('document_summary')
-                                            ->label('')
-                                            ->content(function ($record) {
-                                                if (!$record) {
-                                                    return 'Cree la embarcación para ver el resumen de documentos.';
-                                                }
-
-                                                $total = count(VesselDocumentType::getAllDocuments());
-                                                $loaded = $record->vesselDocuments()->count();
-                                                $pending = $total - $loaded;
-                                                $percentage = $total > 0 ? round(($loaded / $total) * 100) : 0;
-
-                                                $status = $percentage >= 100 ? '✅ Completo' : ($percentage >= 50 ? '⚠️ En progreso' : '❌ Incompleto');
-
-                                                return "**{$status}** | 📁 Total: {$total} | ✅ Cargados: {$loaded} | ⏳ Pendientes: {$pending} | 📊 Completitud: {$percentage}%";
-                                            })
-                                            ->columnSpanFull(),
-                                    ])
-                                    ->collapsible()
-                                    ->collapsed(false),
-
                                 Section::make('📋 DOCUMENTOS DE BANDEIRA E APÓLICES DE SEGURO')
                                     ->description('📄 Documentos obligatorios de registro, bandeira y pólizas de seguro. Requeridos para operaciones marítimas legales.')
                                     ->icon('heroicon-o-flag')
