@@ -334,11 +334,7 @@ class ReporteWordResource extends Resource
                     ->color('primary')
                     ->url(fn (ReporteWord $record): string => url('/reporte-word/download/' . $record->id))
                     ->openUrlInNewTab()
-                    ->visible(function (ReporteWord $record): bool {
-                        // Only show download button if file exists
-                        $fullPath = storage_path('app/private/' . $record->report_path);
-                        return file_exists($fullPath);
-                    }),
+                    ->hidden(),
 
                 Tables\Actions\Action::make('download_pdf')
                     ->label('Descargar PDF')
