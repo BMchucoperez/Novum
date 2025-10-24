@@ -1042,6 +1042,24 @@ class ChecklistInspectionResource extends Resource
                     ->color('success')
                     ->action(function (ChecklistInspection $record) {
                         return static::downloadPDF($record);
+                    })
+                    ->visible(function (ChecklistInspection $record): bool {
+                        return $record->isValidChecklistStructure();
+                    }),
+
+                Tables\Actions\Action::make('generate_new_checklist')
+                    ->label('Generar Nuevo Checklist')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('warning')
+                    ->tooltip('Este checklist es antiguo. Crea uno nuevo para poder descargar PDF.')
+                    ->url(function (ChecklistInspection $record): string {
+                        return route('filament.admin.resources.checklist-inspections.create', [
+                            'vessel_id' => $record->vessel_id,
+                            'owner_id' => $record->owner_id,
+                        ]);
+                    })
+                    ->visible(function (ChecklistInspection $record): bool {
+                        return !$record->isValidChecklistStructure();
                     }),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),

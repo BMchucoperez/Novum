@@ -569,6 +569,28 @@ class ChecklistInspection extends Model
     }
 
     /**
+     * Verificar si el checklist tiene estructura válida (con 'estado' en items)
+     * Los checklists antiguos no tienen esta estructura
+     */
+    public function isValidChecklistStructure(): bool
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $items = $this->getAttribute('parte_' . $i . '_items') ?? [];
+
+            if (!empty($items)) {
+                foreach ($items as $item) {
+                    // Si algún item no tiene la clave 'estado', es estructura antigua
+                    if (!isset($item['estado']) && !array_key_exists('estado', $item)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Get common Parte 2 items (same for all vessel types)
      */
     protected static function getCommonParte2(): array
