@@ -84,13 +84,16 @@
         .cover-header {
             position: relative;
             z-index: 1;
+            text-align: center;
         }
 
         .cover-logo {
-            font-size: 14pt;
-            font-weight: bold;
-            margin-bottom: 10px;
-            letter-spacing: 2px;
+            margin-bottom: 30px;
+        }
+
+        .cover-logo img {
+            max-height: 80px;
+            display: inline-block;
         }
 
         .cover-title {
@@ -160,6 +163,7 @@
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
+            padding-top: 10px;
             border-bottom: 3px solid var(--primary);
             position: relative;
         }
@@ -171,6 +175,15 @@
             right: 0;
             height: 4px;
             background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--accent));
+        }
+
+        .header-logo {
+            margin-bottom: 15px;
+        }
+
+        .header-logo img {
+            max-height: 50px;
+            display: inline-block;
         }
 
         .header h1 {
@@ -526,7 +539,9 @@
     <!-- PRIMERA PÁGINA - PORTADA -->
     <div class="cover-page">
         <div class="cover-header">
-            <div class="cover-logo">⚓ NAVIO</div>
+            <div class="cover-logo">
+                <img src="{{ public_path('images/logo.png') }}" alt="Logo Novum Energy">
+            </div>
             <div class="cover-title">INFORME DE INSPECCIÓN</div>
             <div class="cover-subtitle">Checklist de Inspección Marítima</div>
         </div>
@@ -571,6 +586,9 @@
         <!-- Encabezado -->
         <div class="header">
             <div class="header-line"></div>
+            <div class="header-logo">
+                <img src="{{ public_path('images/logo.png') }}" alt="Logo Novum Energy">
+            </div>
             <h1>INFORME DE INSPECCIÓN CHECKLIST</h1>
             <p>{{ now()->format('d de F de Y') }}</p>
         </div>
