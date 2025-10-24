@@ -58,6 +58,45 @@ class DocumentController extends Controller
             abort(500, 'Error al descargar: ' . $e->getMessage());
         }
     }
-    
- 
+
+    public function downloadReportePDF($id)
+    {
+        try {
+            $reporte = ReporteWord::findOrFail($id);
+
+            // Verificar que el PDF existe
+            if (empty($reporte->pdf_path)) {
+                abort(404, 'El reporte PDF no está disponible.');
+            }
+
+            $fullPath = storage_path('app/private/' . $reporte->pdf_path);
+
+            if (!file_exists($fullPath)) {
+                abort(404, 'El archivo PDF del reporte no existe.');
+            }
+
+            // Verificar que no esté corrupto
+            if (filesize($fullPath) < 1000) {
+                abort(404, 'El archivo PDF del reporte está corrupto.');
+            }
+
+            // Usar el nombre original del archivo
+            $downloadName = basename($reporte->pdf_path);
+
+            return response()->download($fullPath, $downloadName, [
+                'Content-Type' => 'application/pdf',
+                'Cache-Control' => 'no-store',
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            abort(404, 'El reporte solicitado no existe.');
+        } catch (\Exception $e) {
+            Log::error('Error descargando reporte PDF:', [
+                'reporte_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            abort(500, 'Error al descargar: ' . $e->getMessage());
+        }
+    }
+
 }

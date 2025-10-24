@@ -85,14 +85,14 @@ class ReporteWordResource extends Resource
 
                 Forms\Components\Actions::make([
                     Forms\Components\Actions\Action::make('generate_report')
-                        ->label('Generar Reporte Word')
+                        ->label('Generar Reportes (Word + PDF)')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('success')
                         ->action(function ($livewire) {
                             try {
                                 // Obtener el valor del campo seleccionado directamente del formulario
                                 $checklistInspectionId = $livewire->data['checklist_inspection_id'];
-                                
+
                                 if (empty($checklistInspectionId)) {
                                     Notification::make()
                                         ->danger()
@@ -101,7 +101,7 @@ class ReporteWordResource extends Resource
                                         ->send();
                                     return;
                                 }
-                                
+
                                 // Verificar que la inspección existe
                                 $inspection = ChecklistInspection::with(['owner', 'vessel'])->find($checklistInspectionId);
                                 if (!$inspection) {
@@ -112,15 +112,20 @@ class ReporteWordResource extends Resource
                                         ->send();
                                     return;
                                 }
-                                
+
                                 // Generar el reporte Word
                                 $reportPath = self::generateWordReport($checklistInspectionId);
-                                
-                                // Verificar si hubo un error en la generación del reporte
+
+                                // Verificar si hubo un error en la generación del reporte Word
                                 if ($reportPath === null) {
                                     return; // El error ya fue manejado en generateWordReport
                                 }
-                                
+
+                                // Generar el reporte PDF
+                                $ownerName = str_replace(' ', '_', $inspection->owner->name);
+                                $vesselName = str_replace(' ', '_', $inspection->vessel->name);
+                                $pdfPath = self::generatePDFReport($checklistInspectionId, $ownerName, $vesselName);
+
                                 // Crear un nuevo registro de ReporteWord
                                 $reporteWord = new ReporteWord();
                                 $reporteWord->checklist_inspection_id = $checklistInspectionId;
@@ -131,17 +136,18 @@ class ReporteWordResource extends Resource
                                 $reporteWord->inspection_date = $inspection->inspection_start_date;
                                 $reporteWord->file_path = $reportPath;
                                 $reporteWord->report_path = $reportPath;
+                                $reporteWord->pdf_path = $pdfPath;
                                 $reporteWord->generated_by = Auth::user()->name;
                                 $reporteWord->generated_at = now();
                                 $reporteWord->save();
-                                
+
                                 // Mostrar notificación de éxito
                                 \Filament\Notifications\Notification::make()
-                                    ->title('Reporte generado exitosamente')
-                                    ->body('El reporte Word ha sido generado y guardado correctamente.')
+                                    ->title('Reportes generados exitosamente')
+                                    ->body('Los reportes Word y PDF han sido generados y guardados correctamente.')
                                     ->success()
                                     ->send();
-                                
+
                                 // Redireccionar al índice
                                 return redirect()->route('filament.admin.resources.reporte-words.index');
                                 
@@ -323,8 +329,8 @@ class ReporteWordResource extends Resource
             // ])
             ->actions([
                 Tables\Actions\Action::make('download')
-                    ->label('Descargar')
-                    ->icon('heroicon-o-arrow-down-tray')
+                    ->label('Descargar Word')
+                    ->icon('heroicon-o-document-text')
                     ->color('primary')
                     ->url(fn (ReporteWord $record): string => url('/reporte-word/download/' . $record->id))
                     ->openUrlInNewTab()
@@ -333,7 +339,22 @@ class ReporteWordResource extends Resource
                         $fullPath = storage_path('app/private/' . $record->report_path);
                         return file_exists($fullPath);
                     }),
-                
+
+                Tables\Actions\Action::make('download_pdf')
+                    ->label('Descargar PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->url(fn (ReporteWord $record): string => url('/reporte-word/download-pdf/' . $record->id))
+                    ->openUrlInNewTab()
+                    ->visible(function (ReporteWord $record): bool {
+                        // Only show download button if PDF exists
+                        if (empty($record->pdf_path)) {
+                            return false;
+                        }
+                        $fullPath = storage_path('app/private/' . $record->pdf_path);
+                        return file_exists($fullPath);
+                    }),
+
                 Tables\Actions\Action::make('file_missing')
                     ->label('Archivo Faltante')
                     ->icon('heroicon-o-exclamation-triangle')
@@ -1149,6 +1170,104 @@ class ReporteWordResource extends Resource
                 ->body('No se pudo generar el reporte: ' . $e->getMessage())
                 ->send();
             
+            return null;
+        }
+    }
+
+    /**
+     * Genera el reporte PDF de la inspección
+     */
+    protected static function generatePDFReport($checklistInspectionId, $ownerName, $vesselName)
+    {
+        try {
+            $inspection = ChecklistInspection::with(['owner', 'vessel'])->find($checklistInspectionId);
+
+            if (!$inspection) {
+                throw new \Exception('Inspección no encontrada');
+            }
+
+            // Preparar datos para el PDF
+            $partes = [];
+            $stats = [
+                'apto' => 0,
+                'no_apto' => 0,
+                'observado' => 0,
+                'total' => 0,
+                'porcentaje_cumplimiento' => 0,
+            ];
+
+            // Títulos de las partes (EXACTOS del checklist)
+            $parteTitles = [
+                1 => 'PARTE 1: DOCUMENTOS DE BANDERA Y PÓLIZAS DE SEGURO',
+                2 => 'PARTE 2: SISTEMA DE GESTÃO',
+                3 => 'PARTE 3: CASCO E ESTRUTURAS',
+                4 => 'PARTE 4: SISTEMAS DE CARGA/DESCARGA',
+                5 => 'PARTE 5: SEGURANÇA E LUZES DE NAVEGAÇÃO',
+                6 => 'PARTE 6: SISTEMAS DE AMARRAÇÃO',
+            ];
+
+            // Recopilar datos de cada parte
+            for ($i = 1; $i <= 6; $i++) {
+                $items = $inspection->getAttribute('parte_' . $i . '_items') ?? [];
+
+                if (!empty($items)) {
+                    $partes[$i] = [
+                        'title' => $parteTitles[$i],
+                        'items' => $items,
+                    ];
+
+                    // Contar estados
+                    foreach ($items as $item) {
+                        $estado = $item['estado'] ?? '';
+                        if (!empty($estado)) {
+                            $stats['total']++;
+                            if ($estado === 'A') $stats['apto']++;
+                            elseif ($estado === 'N') $stats['no_apto']++;
+                            elseif ($estado === 'O') $stats['observado']++;
+                        }
+                    }
+                }
+            }
+
+            // Calcular porcentaje de cumplimiento
+            if ($stats['total'] > 0) {
+                $stats['porcentaje_cumplimiento'] = round(($stats['apto'] / $stats['total']) * 100, 1);
+            }
+
+            // Generar PDF
+            $pdf = Pdf::loadView('pdf.reporte-inspeccion', [
+                'inspection' => $inspection,
+                'partes' => $partes,
+                'stats' => $stats,
+            ]);
+
+            // Configurar PDF
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->setOption('isHtml5ParserEnabled', true);
+            $pdf->setOption('isRemoteEnabled', false);
+
+            // Crear nombre descriptivo
+            $fileName = 'Reporte_' . $ownerName . '_' . $vesselName . '_' . date('Y-m-d_H-i-s') . '.pdf';
+            $filePath = 'reports/' . $fileName;
+            $finalPath = storage_path('app/private/' . $filePath);
+
+            // Crear directorio si no existe
+            $directory = dirname($finalPath);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            // Guardar PDF
+            $pdf->save($finalPath);
+
+            return $filePath;
+
+        } catch (\Exception $e) {
+            Log::error('Error generando reporte PDF: ' . $e->getMessage(), [
+                'inspection_id' => $checklistInspectionId ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return null;
         }
     }

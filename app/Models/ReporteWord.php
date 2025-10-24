@@ -25,6 +25,7 @@ class ReporteWord extends Model
         'filters',
         'file_path',
         'report_path',
+        'pdf_path',
         'generated_by',
         'generated_at',
     ];

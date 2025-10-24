@@ -52,20 +52,7 @@
 
         /* PRIMERA PÁGINA - PORTADA */
         .cover-page {
-            page-break-after: always;
-            width: 100%;
-            height: auto;
-            max-height: 85vh;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 35px 45px;
-            position: relative;
-            overflow: hidden;
-            margin: 0;
+            display: none !important;
         }
 
         .cover-page::before {
@@ -256,6 +243,9 @@
         .info-row {
             display: flex;
             flex-direction: column;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
         }
 
         .info-label {
@@ -264,13 +254,17 @@
             font-size: 8.5pt;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
 
         .info-value {
             color: var(--text-dark);
             font-size: 10pt;
             font-weight: 500;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.4;
         }
 
         /* BADGES DE ESTADO */

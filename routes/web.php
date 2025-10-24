@@ -27,3 +27,6 @@ Route::get('/documents/{id}/download', [DocumentController::class, 'download'])-
 // Route for downloading reporte words
 Route::get('/reporte-word/download/{id}', [DocumentController::class, 'downloadReporteWord'])->name('reporte-word.download');
 
+// Route for downloading reporte PDF
+Route::get('/reporte-word/download-pdf/{id}', [DocumentController::class, 'downloadReportePDF'])->name('reporte-word.download-pdf');
+
