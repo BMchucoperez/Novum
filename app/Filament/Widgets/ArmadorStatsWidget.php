@@ -45,28 +45,23 @@ class ArmadorStatsWidget extends BaseWidget
         return [
             Stat::make('Embarcaciones', $totalVessels)
                 ->description('Total de embarcaciones propias')
-                ->color('primary')
-                ->icon('heroicon-o-ship'),
+                ->color('primary'),
 
             Stat::make('Inspecciones Aptas', $aptInspections)
                 ->description('Estado: Apto')
-                ->color('success')
-                ->icon('heroicon-o-check-circle'),
+                ->color('success'),
 
             Stat::make('Inspecciones con Problemas', $problemInspections)
                 ->description('Estado: No Apto u Observado')
-                ->color('warning')
-                ->icon('heroicon-o-exclamation-circle'),
+                ->color('warning'),
 
             Stat::make('Documentos por Vencer', $expiringDocuments)
                 ->description('Próximos 30 días')
-                ->color('danger')
-                ->icon('heroicon-o-clock'),
+                ->color('danger'),
 
             Stat::make('Inspecciones Completadas', $completedSchedules)
                 ->description('Total realizadas')
-                ->color('info')
-                ->icon('heroicon-o-check'),
+                ->color('info'),
         ];
     }
 }

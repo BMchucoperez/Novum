@@ -52,28 +52,23 @@ class InspectorStatsWidget extends BaseWidget
         return [
             Stat::make('Inspecciones Este Mes', $completedThisMonth)
                 ->description('Completadas en ' . now()->format('M Y'))
-                ->color('primary')
-                ->icon('heroicon-o-calendar'),
+                ->color('primary'),
 
             Stat::make('Inspecciones Programadas', $scheduledUpcoming)
                 ->description('Próximas a realizar')
-                ->color('info')
-                ->icon('heroicon-o-clock'),
+                ->color('info'),
 
             Stat::make('Completadas Hoy', $completedToday)
                 ->description('Estado: Finalizadas')
-                ->color('success')
-                ->icon('heroicon-o-check-circle'),
+                ->color('success'),
 
             Stat::make('Embarcaciones Distintas', $distinctVessels)
                 ->description('Inspeccionadas (total)')
-                ->color('warning')
-                ->icon('heroicon-o-ship'),
+                ->color('warning'),
 
             Stat::make('Problemas Críticos', $criticalIssues)
                 ->description('Estado: No Apto')
-                ->color('danger')
-                ->icon('heroicon-o-exclamation-circle'),
+                ->color('danger'),
         ];
     }
 }

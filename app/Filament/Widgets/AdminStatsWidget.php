@@ -37,33 +37,27 @@ class AdminStatsWidget extends BaseWidget
         return [
             Stat::make('Total Embarcaciones', $totalVessels)
                 ->description('Registradas en el sistema')
-                ->color('primary')
-                ->icon('heroicon-o-ship'),
+                ->color('primary'),
 
             Stat::make('Total Usuarios', $totalUsers)
                 ->description('Usuarios activos')
-                ->color('info')
-                ->icon('heroicon-o-user-group'),
+                ->color('info'),
 
             Stat::make('Total Inspecciones', $totalInspections)
                 ->description('Historial completo')
-                ->color('success')
-                ->icon('heroicon-o-check-circle'),
+                ->color('success'),
 
             Stat::make('Problemas Críticos', $criticalIssues)
                 ->description('Estado: No Apto')
-                ->color('danger')
-                ->icon('heroicon-o-exclamation-triangle'),
+                ->color('danger'),
 
             Stat::make('Documentos Vencidos', $expiredDocuments)
                 ->description('Requieren renovación')
-                ->color('warning')
-                ->icon('heroicon-o-calendar'),
+                ->color('warning'),
 
             Stat::make('Inspecciones Esta Semana', $inspectionsThisWeek)
                 ->description('Semana actual')
-                ->color('secondary')
-                ->icon('heroicon-o-calendar-days'),
+                ->color('secondary'),
         ];
     }
 }
