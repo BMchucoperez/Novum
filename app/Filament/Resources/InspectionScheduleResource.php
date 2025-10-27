@@ -152,9 +152,17 @@ class InspectionScheduleResource extends Resource
                                 ->placeholder('Seleccione el inspector...')
                                 ->helperText('Solo se muestran usuarios con rol "Inspector"'),
 
-                            Forms\Components\TextInput::make('location')
-                                ->maxLength(255)
-                                ->label('Ubicación'),
+                            Forms\Components\Select::make('location')
+                                ->label('📍 Ubicación')
+                                ->options([
+                                    'Iquitos' => 'Iquitos',
+                                    'Manaos' => 'Manaos',
+                                ])
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Seleccione la ubicación...')
+                                ->prefixIcon('heroicon-o-map-pin'),
 
                             Forms\Components\Select::make('status')
                                 ->options(InspectionSchedule::getStatusOptions())
