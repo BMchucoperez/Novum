@@ -918,12 +918,22 @@ class ChecklistInspectionResource extends Resource
                 Tables\Columns\TextColumn::make('owner.name')
                     ->label('Propietario')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->color('success')
+                    ->weight('medium'),
 
                 Tables\Columns\TextColumn::make('vessel.name')
                     ->label('Embarcación')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->color('primary'),
+
+                Tables\Columns\TextColumn::make('vessel.serviceType.name')
+                    ->label('Tipo de Embarcación')
+                    ->sortable()
+                    ->badge()
+                    ->color('info'),
 
                 Tables\Columns\TextColumn::make('inspection_start_date')
                     ->label('Inicio Inspección')
@@ -937,7 +947,9 @@ class ChecklistInspectionResource extends Resource
 
                 Tables\Columns\TextColumn::make('inspector_name')
                     ->label('Inspector')
-                    ->searchable(),
+                    ->searchable()
+                    ->badge()
+                    ->color('warning'),
 
                 Tables\Columns\BadgeColumn::make('overall_status')
                     ->label('Estado')
@@ -1034,7 +1046,57 @@ class ChecklistInspectionResource extends Resource
                         'N' => 'NO APTO - No Conforme Crítico',
                         'O' => 'OBSERVADO - Conforme con Observaciones',
                     ]),
+
+                Tables\Filters\Filter::make('inspection_date_range')
+                    ->form([
+                        Forms\Components\DatePicker::make('inspection_date_from')
+                            ->label('Desde')
+                            ->placeholder('Fecha inicial'),
+                        Forms\Components\DatePicker::make('inspection_date_to')
+                            ->label('Hasta')
+                            ->placeholder('Fecha final'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['inspection_date_from'],
+                                fn (Builder $query, $date) => $query->whereDate('inspection_start_date', '>=', $date)
+                            )
+                            ->when(
+                                $data['inspection_date_to'],
+                                fn (Builder $query, $date) => $query->whereDate('inspection_end_date', '<=', $date)
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['inspection_date_from'] ?? null) {
+                            $indicators['inspection_date_from'] = 'Desde: ' . \Carbon\Carbon::parse($data['inspection_date_from'])->format('d/m/Y');
+                        }
+                        if ($data['inspection_date_to'] ?? null) {
+                            $indicators['inspection_date_to'] = 'Hasta: ' . \Carbon\Carbon::parse($data['inspection_date_to'])->format('d/m/Y');
+                        }
+                        return $indicators;
+                    }),
+
+                Tables\Filters\SelectFilter::make('inspector_name')
+                    ->label('Inspector')
+                    ->options(function () {
+                        return User::role('Inspector')
+                            ->orderBy('name')
+                            ->pluck('name', 'name');
+                    })
+                    ->searchable()
+                    ->preload(),
             ])
+            ->filtersFormColumns(3)
+            ->filtersTriggerAction(
+                fn (Tables\Actions\Action $action) => $action
+                    ->button()
+                    ->label('Filtros')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+            )
+            ->deferFilters()
             ->actions([
                 Tables\Actions\Action::make('download_pdf')
                     ->label('Descargar PDF')
