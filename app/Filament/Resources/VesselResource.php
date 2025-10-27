@@ -560,7 +560,7 @@ class VesselResource extends Resource
             ->searchPlaceholder('Buscar embarcaciones...')
             ->searchDebounce(500)
             ->deferFilters()
-            ->filtersFormColumns(3)
+            ->filtersFormColumns(4)
             ->filtersLayout(Tables\Enums\FiltersLayout::AboveContent)
             ->header(
                 view('filament.components.vessel-header', ['totalVessels' => Vessel::count()])
@@ -589,33 +589,26 @@ class VesselResource extends Resource
                 Tables\Filters\SelectFilter::make('service_type_id')
                     ->relationship('serviceType', 'name')
                     ->label('Tipo de Embarcación')
-                    ->indicator('Tipo de Embarcación')
+                    ->indicator('Tipo')
                     ->multiple()
                     ->preload()
                     ->searchable(),
 
+                Tables\Filters\SelectFilter::make('flag_registry')
+                    ->options([
+                        'Perú' => 'Perú',
+                        'Brasil' => 'Brasil',
+                    ])
+                    ->label('Bandera de Registro')
+                    ->indicator('Bandera')
+                    ->multiple(),
+
                 Tables\Filters\SelectFilter::make('owner_id')
                     ->relationship('owner', 'name')
                     ->label('Propietario / Armador')
+                    ->indicator('Propietario')
                     ->searchable()
                     ->preload(),
-
-                // Tables\Filters\SelectFilter::make('shipyard_id')
-                //     ->relationship('shipyard', 'name')
-                //     ->label('Astillero')
-                //     ->preload()
-                //     ->searchable(),
-
-                // Tables\Filters\SelectFilter::make('user_id')
-                //     ->relationship('user', 'name', function ($query) {
-                //         // Solo mostrar usuarios con el rol "Armador"
-                //         return $query->whereHas('roles', function ($query) {
-                //             $query->where('name', 'Armador');
-                //         });
-                //     })
-                //     ->label('Usuario Asignado')
-                //     ->preload()
-                //     ->searchable(),
             ])
             ->filtersFormColumns(3)
             ->actions([
