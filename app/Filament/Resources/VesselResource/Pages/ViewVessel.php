@@ -74,61 +74,150 @@ class ViewVessel extends ViewRecord
         return $infolist
             ->schema([
                 Infolists\Components\Section::make('Información General')
+                    ->description('Datos de identificación y clasificación de la embarcación')
+                    ->icon('heroicon-o-information-circle')
                     ->schema([
                         Infolists\Components\TextEntry::make('name')
-                            ->label('Nombre'),
+                            ->label('Nombre de la Embarcación')
+                            ->formatStateUsing(fn ($state) => "<div style='font-size: 15px; font-weight: 700; color: #2E75B6;'>{$state}</div>")
+                            ->html(),
                         Infolists\Components\TextEntry::make('registration_number')
-                            ->label('Número de Matrícula'),
+                            ->label('Número de Matrícula')
+                            ->formatStateUsing(fn ($state) => "<div style='font-size: 15px; font-weight: 700; color: #1f1f1f;'>{$state}</div>")
+                            ->html(),
                         Infolists\Components\TextEntry::make('serviceType.name')
-                            ->label('Tipo de Servicio'),
+                            ->label('Tipo de Servicio')
+                            ->formatStateUsing(fn ($state) => "<span style='display: inline-block; padding: 6px 12px; background: #dbeafe; color: #1e40af; border-radius: 4px; font-weight: 600; font-size: 13px;'>{$state}</span>")
+                            ->html(),
                         Infolists\Components\TextEntry::make('navigationType.name')
-                            ->label('Tipo de Navegación'),
+                            ->label('Tipo de Navegación')
+                            ->formatStateUsing(fn ($state) => "<span style='display: inline-block; padding: 6px 12px; background: #f0fdf4; color: #166534; border-radius: 4px; font-weight: 600; font-size: 13px;'>{$state}</span>")
+                            ->html(),
                     ])
                     ->columns(2),
 
                 Infolists\Components\Section::make('Embarcaciones Asociadas')
+                    ->description('Embarcaciones que viajan en convoy con esta nave')
+                    ->icon('heroicon-o-link')
                     ->schema([
                         Infolists\Components\RepeatableEntry::make('associatedVessels')
-                            ->label('Embarcaciones Asociadas')
+                            ->label('')
                             ->schema([
                                 Infolists\Components\TextEntry::make('associatedVessel.name')
-                                    ->label('Nombre'),
+                                    ->label('Nombre')
+                                    ->columnSpanFull()
+                                    ->formatStateUsing(fn ($state) => "
+                                        <div style='background: #f8f9fa; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px;'>
+                                            <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>🚢 Nombre</div>
+                                            <div style='font-size: 14px; font-weight: 700; color: #2E75B6;'>{$state}</div>
+                                        </div>
+                                    ")
+                                    ->html(),
                                 Infolists\Components\TextEntry::make('associatedVessel.registration_number')
-                                    ->label('Matrícula'),
+                                    ->label('Matrícula')
+                                    ->columnSpanFull()
+                                    ->formatStateUsing(fn ($state) => "
+                                        <div style='background: #f8f9fa; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 6px;'>
+                                            <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>🔖 Matrícula</div>
+                                            <div style='font-size: 14px; font-weight: 700; color: #1f1f1f;'>{$state}</div>
+                                        </div>
+                                    ")
+                                    ->html(),
                             ])
-                            ->columns(2)
+                            ->columns(1)
                             ->columnSpanFull()
-                            ->placeholder('No hay embarcaciones asociadas'),
+                            ->placeholder('📭 No hay embarcaciones asociadas'),
                     ])
                     ->collapsible(),
 
                 Infolists\Components\Section::make('Propietario y Usuario')
+                    ->description('Información de propiedad y gestión de la embarcación')
+                    ->icon('heroicon-o-user-group')
                     ->schema([
                         Infolists\Components\TextEntry::make('owner.name')
-                            ->label('Propietario'),
+                            ->label('Propietario / Armador')
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='background: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 6px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>👤 Propietario</div>
+                                    <div style='font-size: 14px; font-weight: 700; color: #1f1f1f;'>{$state}</div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('user.name')
-                            ->label('Usuario Asignado'),
+                            ->label('Usuario Asignado')
+                            ->formatStateUsing(fn ($state) => $state ? "
+                                <div style='background: #f3e8ff; border-left: 4px solid #a855f7; padding: 12px 16px; border-radius: 6px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>👨‍💼 Usuario</div>
+                                    <div style='font-size: 14px; font-weight: 700; color: #1f1f1f;'>{$state}</div>
+                                </div>
+                            " : "
+                                <div style='background: #f5f5f5; border-left: 4px solid #d1d5db; padding: 12px 16px; border-radius: 6px;'>
+                                    <div style='font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>👨‍💼 Usuario</div>
+                                    <div style='font-size: 14px; font-weight: 700; color: #999;'>Sin asignar</div>
+                                </div>
+                            ")
+                            ->html(),
                     ])
                     ->columns(2),
 
                 Infolists\Components\Section::make('Características Técnicas')
+                    ->description('Especificaciones y dimensiones de la embarcación')
+                    ->icon('heroicon-o-cog-6-tooth')
                     ->schema([
                         Infolists\Components\TextEntry::make('construction_year')
-                            ->label('Año de Construcción'),
+                            ->label('Año de Construcción')
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='text-align: center; padding: 12px 8px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>📅</div>
+                                    <div style='font-size: 16px; font-weight: 700; color: #2E75B6;'>{$state}</div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('shipyard.name')
-                            ->label('Astillero'),
+                            ->label('Astillero')
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>🏗️ Astillero</div>
+                                    <div style='font-size: 14px; font-weight: 700; color: #1f1f1f;'>{$state}</div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('length')
                             ->label('Eslora')
-                            ->suffix(' m'),
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='text-align: center; padding: 12px 8px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>📏</div>
+                                    <div style='font-size: 16px; font-weight: 700; color: #10b981;'>{$state} <span style=\"font-size: 12px; color: #999;\">m</span></div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('beam')
                             ->label('Manga')
-                            ->suffix(' m'),
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='text-align: center; padding: 12px 8px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>📐</div>
+                                    <div style='font-size: 16px; font-weight: 700; color: #f59e0b;'>{$state} <span style=\"font-size: 12px; color: #999;\">m</span></div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('depth')
                             ->label('Puntal')
-                            ->suffix(' m'),
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='text-align: center; padding: 12px 8px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>📏</div>
+                                    <div style='font-size: 16px; font-weight: 700; color: #8b5cf6;'>{$state} <span style=\"font-size: 12px; color: #999;\">m</span></div>
+                                </div>
+                            ")
+                            ->html(),
                         Infolists\Components\TextEntry::make('gross_tonnage')
                             ->label('Arqueo Bruto')
-                            ->suffix(' ton'),
+                            ->formatStateUsing(fn ($state) => "
+                                <div style='text-align: center; padding: 12px 8px;'>
+                                    <div style='font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;'>⚖️</div>
+                                    <div style='font-size: 16px; font-weight: 700; color: #06b6d4;'>{$state} <span style=\"font-size: 12px; color: #999;\">ton</span></div>
+                                </div>
+                            ")
+                            ->html(),
                     ])
                     ->columns(3),
 
