@@ -314,7 +314,7 @@
                                 <td style="font-weight: 500; color: #666666;">{{ $index + 1 }}</td>
                                 <td>
                                     @if(!empty($item['item_es']))
-                                        <span style="color: #333333; font-weight: 400;">🇧🇷 {{ $item['item'] }} &nbsp;&nbsp;|&nbsp;&nbsp; 🇵🇪 {{ $item['item_es'] }}</span>
+                                        <span style="color: #333333; font-weight: 400;"><strong>[PT]</strong> {{ $item['item'] }} &nbsp;|&nbsp; <strong>[ES]</strong> {{ $item['item_es'] }}</span>
                                     @else
                                         <span style="color: #333333; font-weight: 400;">{{ $item['item'] }}</span>
                                     @endif
