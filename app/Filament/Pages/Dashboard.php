@@ -16,15 +16,7 @@ class Dashboard extends FilamentDashboard
 {
     public function getTitle(): string
     {
-        $user = auth()->user();
-
-        if ($user->hasRole('Armador')) {
-            return 'Mi Dashboard - Propietario';
-        } elseif ($user->hasRole('Inspector')) {
-            return 'Mi Dashboard - Inspector';
-        }
-
-        return 'Dashboard del Sistema';
+        return 'Dashboard de Inspecciones';
     }
 
     /**

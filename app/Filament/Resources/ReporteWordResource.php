@@ -30,7 +30,7 @@ class ReporteWordResource extends Resource
 
     protected static ?string $navigationGroup = 'Reportes';
 
-    protected static ?string $navigationLabel = 'Reporte General';
+    protected static ?string $navigationLabel = 'Reporte de Inspecciones';
 
     protected static ?string $modelLabel = 'Reporte';
 
