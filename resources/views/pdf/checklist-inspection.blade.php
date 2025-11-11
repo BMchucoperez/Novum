@@ -314,11 +314,7 @@
                                 <td style="font-weight: 500; color: #666666;">{{ $index + 1 }}</td>
                                 <td>
                                     @if(!empty($item['item_es']))
-                                        <div style="line-height: 1.4;">
-                                            <span style="color: #333333; font-weight: 400;">{{ $item['item'] }}</span>
-                                            <br>
-                                            <span style="color: #888888; font-size: 8.5pt; font-weight: 300; font-style: italic;">{{ $item['item_es'] }}</span>
-                                        </div>
+                                        <span style="color: #333333; font-weight: 400;">🇧🇷 {{ $item['item'] }} &nbsp;&nbsp;|&nbsp;&nbsp; 🇵🇪 {{ $item['item_es'] }}</span>
                                     @else
                                         <span style="color: #333333; font-weight: 400;">{{ $item['item'] }}</span>
                                     @endif

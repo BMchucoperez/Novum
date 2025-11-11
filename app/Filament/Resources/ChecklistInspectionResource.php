@@ -1196,14 +1196,14 @@ class ChecklistInspectionResource extends Resource
             'total' => 0,
         ];
 
-        // Títulos de las partes
+        // Títulos de las partes (bilingües)
         $parteTitles = [
-            1 => 'Parte 1 - Documentos de Bandera y Pólizas',
-            2 => 'Parte 2 - Sistema de Gestión',
-            3 => 'Parte 3 - Casco y Estructuras',
-            4 => 'Parte 4 - Sistemas de Carga/Descarga',
-            5 => 'Parte 5 - Seguridad y Luces de Navegación',
-            6 => 'Parte 6 - Sistemas de Amarre',
+            1 => '🇧🇷 DOCUMENTOS DE BANDEIRA E APÓLICES DE SEGURO | 🇵🇪 DOCUMENTOS DE BANDERA Y PÓLIZAS',
+            2 => '🇧🇷 DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO | 🇵🇪 DOCUMENTOS DEL SISTEMA DE GESTIÓN A BORDO',
+            3 => '🇧🇷 CASCO E ESTRUTURAS / MÁQUINAS | 🇵🇪 CASCO Y ESTRUCTURAS / MÁQUINAS',
+            4 => '🇧🇷 SISTEMAS DE CARGA E DESCARGA / SEGURANÇA | 🇵🇪 SISTEMAS DE CARGA Y DESCARGA / SEGURIDAD',
+            5 => '🇧🇷 SEGURANÇA E LUZES DE NAVEGAÇÃO | 🇵🇪 SEGURIDAD Y LUCES DE NAVEGACIÓN',
+            6 => '🇧🇷 SISTEMA DE AMARRAÇÃO | 🇵🇪 SISTEMA DE AMARRE',
         ];
 
         // Recopilar datos de cada parte
