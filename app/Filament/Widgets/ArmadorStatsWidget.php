@@ -6,7 +6,6 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Vessel;
 use App\Models\ChecklistInspection;
-use App\Models\VesselDocument;
 use App\Models\InspectionSchedule;
 
 class ArmadorStatsWidget extends BaseWidget
@@ -27,15 +26,11 @@ class ArmadorStatsWidget extends BaseWidget
 
         $totalVessels = count($vesselIds);
         $aptInspections = ChecklistInspection::whereIn('vessel_id', $vesselIds)
-            ->where('overall_status', 'A')
+            ->where('overall_status', 'APTO')
             ->count();
 
         $problemInspections = ChecklistInspection::whereIn('vessel_id', $vesselIds)
-            ->whereIn('overall_status', ['N', 'O'])
-            ->count();
-
-        $expiringDocuments = VesselDocument::whereIn('vessel_id', $vesselIds)
-            ->expiring(30)
+            ->whereIn('overall_status', ['NO APTO', 'OBSERVADO'])
             ->count();
 
         $completedSchedules = InspectionSchedule::whereIn('vessel_id', $vesselIds)
@@ -54,10 +49,6 @@ class ArmadorStatsWidget extends BaseWidget
             Stat::make('Inspecciones con Problemas', $problemInspections)
                 ->description('Estado: No Apto u Observado')
                 ->color('warning'),
-
-            Stat::make('Documentos por Vencer', $expiringDocuments)
-                ->description('Próximos 30 días')
-                ->color('danger'),
 
             Stat::make('Inspecciones Completadas', $completedSchedules)
                 ->description('Total realizadas')

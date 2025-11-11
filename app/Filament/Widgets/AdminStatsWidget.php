@@ -7,7 +7,6 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Vessel;
 use App\Models\User;
 use App\Models\ChecklistInspection;
-use App\Models\VesselDocument;
 
 class AdminStatsWidget extends BaseWidget
 {
@@ -28,8 +27,7 @@ class AdminStatsWidget extends BaseWidget
         $totalVessels = Vessel::count();
         $totalUsers = User::count();
         $totalInspections = ChecklistInspection::count();
-        $criticalIssues = ChecklistInspection::where('overall_status', 'N')->count();
-        $expiredDocuments = VesselDocument::expired()->count();
+        $criticalIssues = ChecklistInspection::where('overall_status', 'NO APTO')->count();
         $inspectionsThisWeek = ChecklistInspection::query()
             ->whereBetween('inspection_start_date', [$currentWeekStart, $currentWeekEnd])
             ->count();
@@ -50,10 +48,6 @@ class AdminStatsWidget extends BaseWidget
             Stat::make('Problemas Críticos', $criticalIssues)
                 ->description('Estado: No Apto')
                 ->color('danger'),
-
-            Stat::make('Documentos Vencidos', $expiredDocuments)
-                ->description('Requieren renovación')
-                ->color('warning'),
 
             Stat::make('Inspecciones Esta Semana', $inspectionsThisWeek)
                 ->description('Semana actual')

@@ -46,7 +46,7 @@ class InspectorStatsWidget extends BaseWidget
 
         // Inspecciones con problemas críticos (No Apto)
         $criticalIssues = ChecklistInspection::query()
-            ->where('overall_status', 'N')
+            ->where('overall_status', 'NO APTO')
             ->count();
 
         return [

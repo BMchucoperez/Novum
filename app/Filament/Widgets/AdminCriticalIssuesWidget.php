@@ -24,7 +24,7 @@ class AdminCriticalIssuesWidget extends BaseWidget
         return $table
             ->query(
                 ChecklistInspection::query()
-                    ->where('overall_status', 'N')
+                    ->where('overall_status', 'NO APTO')
                     ->with('vessel', 'owner')
                     ->latest('inspection_end_date')
             )

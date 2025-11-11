@@ -454,7 +454,7 @@ class ChecklistInspectionResource extends Resource
                     ->columnSpanFull()
                     ->tabs([
                         Tabs\Tab::make('🔍 Parte 1')
-                            ->label('DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO')
+                            ->label('🇧🇷 DOCUMENTOS DE BANDEIRA E APÓLICES DE SEGURO | 🇵🇪 DOCUMENTOS DE BANDERA Y PÓLIZAS')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_1_items') ?? []))
                             ->schema([
@@ -462,7 +462,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('⚙️ Parte 2')
-                            ->label('DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO')
+                            ->label('🇧🇷 DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO | 🇵🇪 DOCUMENTOS DEL SISTEMA DE GESTIÓN A BORDO')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_2_items') ?? []))
                             ->schema([
@@ -470,7 +470,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('🛡️ Parte 3')
-                            ->label('CASCO Y ESTRUTURAS')
+                            ->label('🇧🇷 CASCO E ESTRUTURAS / MÁQUINAS | 🇵🇪 CASCO Y ESTRUCTURAS / MÁQUINAS')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_3_items') ?? []))
                             ->schema([
@@ -478,7 +478,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('📊 Parte 4')
-                            ->label('SISTEMAS DE CARGA E DESCARGA E DE ALARME DE NIVEL')
+                            ->label('🇧🇷 SISTEMAS DE CARGA E DESCARGA / SEGURANÇA | 🇵🇪 SISTEMAS DE CARGA Y DESCARGA / SEGURIDAD')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_4_items') ?? []))
                             ->schema([
@@ -486,7 +486,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('🔧 Parte 5')
-                            ->label('SEGURANÇA, SALVAMENTO, CONTRA INCÊNDIO E LUZES DE NAVEGAÇÃO')
+                            ->label('🇧🇷 SEGURANÇA E LUZES DE NAVEGAÇÃO | 🇵🇪 SEGURIDAD Y LUCES DE NAVEGACIÓN')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_5_items') ?? []))
                             ->schema([
@@ -494,7 +494,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('✅ Parte 6')
-                            ->label('SISTEMA DE AMARRAÇÃO')
+                            ->label('🇧🇷 SISTEMA DE AMARRAÇÃO | 🇵🇪 SISTEMA DE AMARRE')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_6_items') ?? []))
                             ->schema([
