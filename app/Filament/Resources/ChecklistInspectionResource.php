@@ -80,7 +80,7 @@ class ChecklistInspectionResource extends Resource
             VesselDocumentType::LICENCA_ESTACAO => 'Licença de estação de navio',
             VesselDocumentType::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga',
             VesselDocumentType::PLANO_INCENDIO => 'Plano de incêndio',
-            VesselDocumentType::OPERADOR_TECNICO => 'Pessoa Responsável designada',
+            VesselDocumentType::OPERADOR_TECNICO => 'Operador técnico - DPA',
             VesselDocumentType::CREW_LIST => 'Crew List de saida',
 
             // DOCUMENTOS EXCLUSIVOS PARA MOTOCHATAS
@@ -267,8 +267,7 @@ class ChecklistInspectionResource extends Resource
             // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
             'Certificado de controle de Praga' => $flagBR . 'Certificado de controle de Praga&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Fumigación, Desinfección y Desratización',
             'Plano de incêndio' => $flagBR . 'Plano de incêndio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano contraincendio',
-            'Operador técnico' => $flagBR . 'Operador técnico - DPA&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Operador técnico - DPA',
-            'Pessoa Responsável designada' => $flagBR . 'Pessoa Responsável designada&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Persona responsable designada',
+            'Operador técnico - DPA' => $flagBR . 'Operador técnico - DPA&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Operador técnico - DPA',
             'Crew List' => $flagBR . 'Crew List&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Crew List',
             'Crew List de saida' => $flagBR . 'Crew List de saida&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Crew List de salida',
             'Cartão de tripulação de segurança (CTS)' => $flagBR . 'Cartão de tripulação de segurança (CTS)&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Dotación Mínima',

@@ -203,7 +203,7 @@ class ChecklistInspection extends Model
 
                 ['item' => 'Certificado de controle de Praga', 'item_es' => 'Certificado de Fumigación, Desinfección y Desratización', 'prioridad' => 1, 'checkbox_1' => false, 'checkbox_2' => false, 'estado' => '', 'comentarios' => '', 'archivos_adjuntos' => []],
                 ['item' => 'Plano de incêndio', 'item_es' => 'Plano contraincendio', 'prioridad' => 1, 'checkbox_1' => false, 'checkbox_2' => false, 'estado' => '', 'comentarios' => '', 'archivos_adjuntos' => []],
-                ['item' => 'Pessoa Responsável designada', 'item_es' => 'Persona responsable designada', 'prioridad' => 1, 'checkbox_1' => false, 'checkbox_2' => false, 'estado' => '', 'comentarios' => '', 'archivos_adjuntos' => []],
+                ['item' => 'Operador técnico - DPA', 'item_es' => 'Operador técnico - DPA', 'prioridad' => 1, 'checkbox_1' => false, 'checkbox_2' => false, 'estado' => '', 'comentarios' => '', 'archivos_adjuntos' => []],
                 ['item' => 'Crew List de saida', 'item_es' => 'Crew List de salida', 'prioridad' => 1, 'checkbox_1' => false, 'checkbox_2' => false, 'estado' => '', 'comentarios' => '', 'archivos_adjuntos' => []],
             ],
             'parte_3' => [
