@@ -78,7 +78,11 @@ class ChecklistInspectionResource extends Resource
             // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
             VesselDocumentType::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS)',
             VesselDocumentType::LICENCA_ESTACAO => 'Licença de estação de navio',
-            
+            VesselDocumentType::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga',
+            VesselDocumentType::PLANO_INCENDIO => 'Plano de incêndio',
+            VesselDocumentType::OPERADOR_TECNICO => 'Pessoa Responsável designada',
+            VesselDocumentType::CREW_LIST => 'Crew List de saida',
+
             // DOCUMENTOS EXCLUSIVOS PARA MOTOCHATAS
             VesselDocumentType::MOTOCHATA_DOCUMENTO_1 => 'Documento especial motochata 1',
             VesselDocumentType::MOTOCHATA_DOCUMENTO_2 => 'Documento especial motochata 2',
@@ -264,7 +268,9 @@ class ChecklistInspectionResource extends Resource
             'Certificado de controle de Praga' => $flagBR . 'Certificado de controle de Praga&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Fumigación, Desinfección y Desratización',
             'Plano de incêndio' => $flagBR . 'Plano de incêndio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Plano contraincendio',
             'Operador técnico' => $flagBR . 'Operador técnico - DPA&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Operador técnico - DPA',
+            'Pessoa Responsável designada' => $flagBR . 'Pessoa Responsável designada&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Persona responsable designada',
             'Crew List' => $flagBR . 'Crew List&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Crew List',
+            'Crew List de saida' => $flagBR . 'Crew List de saida&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Crew List de salida',
             'Cartão de tripulação de segurança (CTS)' => $flagBR . 'Cartão de tripulação de segurança (CTS)&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Certificado de Dotación Mínima',
             'Licença de estação de navio' => $flagBR . 'Licença de estação de navio&nbsp;&nbsp;|&nbsp;&nbsp;' . $flagPE . 'Permiso para Operar una Estación de Comunicación de Teleservicio Móvil',
         ];
