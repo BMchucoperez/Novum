@@ -47,12 +47,12 @@ class ChecklistInspectionResource extends Resource
     protected static function getDocumentItemMapping(): array
     {
         return [
-            // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO
+            // PARTE 1 - DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO (BARCAZA)
             VesselDocumentType::CERTIFICADO_ARQUEACAO => 'Certificado nacional de arqueação',
             VesselDocumentType::CERTIFICADO_BORDA_LIVRE => 'Certificado nacional de borda livre para a navegação interior',
             VesselDocumentType::PROVISAO_REGISTRO => 'Provisão de registro da propriedade marítima (ou Documento provisório de propiedade)',
             VesselDocumentType::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
-            VesselDocumentType::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação',
+            VesselDocumentType::CERTIFICADO_SEGURANCA => 'Certificado de segurança de navegação .',
             VesselDocumentType::LICENCA_IPAAM => 'Licença de operação - IPAAM',
             VesselDocumentType::AUTORIZACAO_ANP => 'Autorização de ANP',
             VesselDocumentType::AUTORIZACAO_ANTAQ => 'Autorização de ANTAQ',
@@ -60,28 +60,28 @@ class ChecklistInspectionResource extends Resource
             VesselDocumentType::CERTIFICADO_REGULARIDADE => 'Certificado de regularidade - IBAMA',
             VesselDocumentType::CERTIFICADO_ARMADOR => 'Certificado de registro de armador (CRA)',
             VesselDocumentType::APOLICE_SEGURO => 'Apolice de seguro P&I',
-            
-            // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO
-            VesselDocumentType::PLANO_SEGURANCA => 'Plano de segurança',
+
+            // PARTE 1 - DOCUMENTOS EXCLUSIVOS PARA EMPUJADOR
+            VesselDocumentType::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS) ',
+            VesselDocumentType::LICENCA_ESTACAO => 'Licença de estação de navio ',
+
+            // PARTE 2 - DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO (BARCAZA)
+            VesselDocumentType::PLANO_SEGURANCA => 'Plano de segurança ou Incêndio',
             VesselDocumentType::PLANO_ARRANJO => 'Plano de arranjo geral',
-            VesselDocumentType::PLANO_REDE_CARGA => 'Plano de rede de carga e descarga',
-            VesselDocumentType::PLANO_CAPACIDADE => 'Plano de caoacidade de tanques',
+            VesselDocumentType::PLANO_REDE_CARGA => 'Diagrama de rede de carga e descarga',
+            VesselDocumentType::PLANO_CAPACIDADE => 'Plano de capacidade de tanques',
             VesselDocumentType::CERTIFICADO_PNEUMATICO => 'Certificado de teste pneumático dos tanques de armazenamento de óleo',
             VesselDocumentType::CERTIFICADO_REDE => 'Certificado de Teste da rede de carga / descarga',
-            VesselDocumentType::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo ',
+            VesselDocumentType::CERTIFICADO_VALVULA => 'Certificado de Teste da válvula de pressão e vácuo',
             VesselDocumentType::PLANO_SOPEP => 'Plano de Emergência a Bordo para Poluição por Óleo - SOPEP',
-            VesselDocumentType::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio',
-            
-            // DOCUMENTOS EXCLUSIVOS PARA BARCAZAS
-            VesselDocumentType::DECLARACAO_CONFORMIDADE => 'Declaração de conformidade para transporte de petróleo',
-            
-            // DOCUMENTOS EXCLUSIVOS PARA EMPUJADORES
-            VesselDocumentType::CARTAO_TRIPULACAO => 'Cartão de tripulação de segurança (CTS)',
-            VesselDocumentType::LICENCA_ESTACAO => 'Licença de estação de navio',
-            VesselDocumentType::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga',
+            VesselDocumentType::PLANO_CONTINGENCIA => 'Manual de contingência',
+            VesselDocumentType::CERTIFICADO_EXTINTORES => 'Certificados de Teste Hidrostático e Manutenção para Extintores de Incêndio.',
+
+            // PARTE 2 - DOCUMENTOS EXCLUSIVOS PARA EMPUJADOR
+            VesselDocumentType::CERTIFICADO_CONTROLE => 'Certificado de controle de Praga ',
             VesselDocumentType::PLANO_INCENDIO => 'Plano de incêndio',
-            VesselDocumentType::OPERADOR_TECNICO => 'Operador técnico - DPA',
-            VesselDocumentType::CREW_LIST => 'Crew List de saida',
+            VesselDocumentType::OPERADOR_TECNICO => 'Pessoa Responsável designada',
+            VesselDocumentType::CREW_LIST => 'Crew List de saida.',
 
             // DOCUMENTOS EXCLUSIVOS PARA MOTOCHATAS
             VesselDocumentType::MOTOCHATA_DOCUMENTO_1 => 'Documento especial motochata 1',
@@ -386,11 +386,12 @@ class ChecklistInspectionResource extends Resource
                                         }
                                         
                                         $vesselType = strtolower($vessel->serviceType->name);
+                                        $set('vessel_type', $vesselType);
                                         $structure = ChecklistInspection::getDefaultStructure($vesselType);
-                                        
-                                        // Actualizar cada parte del checklist
-                                        for ($i = 1; $i <= 6; $i++) {
-                                            $set("parte_{$i}_items", $structure["parte_{$i}"]);
+
+                                        // Actualizar cada parte del checklist (dinámicamente según las partes disponibles)
+                                        foreach ($structure as $parteKey => $parteItems) {
+                                            $set("{$parteKey}_items", $parteItems);
                                         }
                                     })
                                     ->columnSpan([
@@ -398,6 +399,20 @@ class ChecklistInspectionResource extends Resource
                                         'md' => 1,
                                         'lg' => 1,
                                     ]),
+
+                                Forms\Components\Hidden::make('vessel_type')
+                                    ->dehydrated(false)
+                                    ->default(function (Forms\Get $get, ?ChecklistInspection $record) {
+                                        // Inicializa vessel_type en modo EDIT
+                                        if ($record && $record->vessel_id) {
+                                            $vessel = Vessel::find($record->vessel_id);
+                                            return $vessel && $vessel->serviceType
+                                                ? strtolower($vessel->serviceType->name)
+                                                : null;
+                                        }
+                                        return null;
+                                    })
+                                    ->live(),
 
                                 Forms\Components\DatePicker::make('inspection_start_date')
                                     ->label('📅 Fecha de Inicio de Inspección')
@@ -459,7 +474,7 @@ class ChecklistInspectionResource extends Resource
                     ->columnSpanFull()
                     ->tabs([
                         Tabs\Tab::make('🔍 Parte 1')
-                            ->label('🇧🇷 DOCUMENTOS DE BANDEIRA E APÓLICES DE SEGURO | 🇵🇪 DOCUMENTOS DE BANDERA Y PÓLIZAS')
+                            ->label('🇧🇷 1. DOCUMENTOS DE BANDEIRA E APOLICES DE SEGURO | 🇵🇪 1. DOCUMENTOS DE BANDERA Y POLIZAS')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_1_items') ?? []))
                             ->schema([
@@ -467,7 +482,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('⚙️ Parte 2')
-                            ->label('🇧🇷 DOCUMENTOS DO SISTEMA DE GESTÃO DE BORDO | 🇵🇪 DOCUMENTOS DEL SISTEMA DE GESTIÓN A BORDO')
+                            ->label('🇧🇷 2. DOCUMENTOS DE GESTÃO DE BORDO | 🇵🇪 2. DOCUMENTOS DE GESTIÓN A BORDO')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_2_items') ?? []))
                             ->schema([
@@ -475,7 +490,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('🛡️ Parte 3')
-                            ->label('🇧🇷 CASCO E ESTRUTURAS / MÁQUINAS | 🇵🇪 CASCO Y ESTRUCTURAS / MÁQUINAS')
+                            ->label('🇧🇷 3. CASCO Y ESTRUTURAS | 🇵🇪 3. CASCO Y ESTRUCTURAS')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_3_items') ?? []))
                             ->schema([
@@ -483,7 +498,7 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('📊 Parte 4')
-                            ->label('🇧🇷 SISTEMAS DE CARGA E DESCARGA / SEGURANÇA | 🇵🇪 SISTEMAS DE CARGA Y DESCARGA / SEGURIDAD')
+                            ->label('🇧🇷 4. SISTEMAS DE CARGA E DESCARGA | 🇵🇪 4. SISTEMAS DE CARGA - DESCARGA')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_4_items') ?? []))
                             ->schema([
@@ -491,19 +506,20 @@ class ChecklistInspectionResource extends Resource
                             ]),
 
                         Tabs\Tab::make('🔧 Parte 5')
-                            ->label('🇧🇷 SEGURANÇA E LUZES DE NAVEGAÇÃO | 🇵🇪 SEGURIDAD Y LUCES DE NAVEGACIÓN')
+                            ->label('🇧🇷 5. SEGURANÇA | 🇵🇪 5. SEGURIDAD')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_5_items') ?? []))
                             ->schema([
                                 static::createChecklistSection('parte_5_items', '🔧 Items de Evaluación - Parte 5', 5, true), // true for image-only attachments
                             ]),
 
-                        Tabs\Tab::make('✅ Parte 6')
-                            ->label('🇧🇷 SISTEMA DE AMARRAÇÃO | 🇵🇪 SISTEMA DE AMARRE')
+                        Tabs\Tab::make('⚓ Parte 6')
+                            ->label('🇧🇷 6. SISTEMA DE AMARRAÇÃO | 🇵🇪 6. SISTEMA DE AMARRE')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn (Forms\Get $get): int => count($get('parte_6_items') ?? []))
+                            ->visible(fn (Forms\Get $get) => $get('vessel_type') !== 'empujador')
                             ->schema([
-                                static::createChecklistSection('parte_6_items', '✅ Items de Evaluación - Parte 6', 6, true), // true for image-only attachments
+                                static::createChecklistSection('parte_6_items', '⚓ Items de Evaluación - Parte 6', 6, true), // true for image-only attachments
                             ]),
                     ]),
 
@@ -549,36 +565,6 @@ class ChecklistInspectionResource extends Resource
                             'xl' => 12,
                         ])
                             ->schema([
-                                // Prioridad (no editable) - Usando Placeholder
-                                // Forms\Components\Placeholder::make('prioridad_display')
-                                //     ->label('🏅 Prioridad')
-                                //     ->content(function (Forms\Get $get) {
-                                //         $prioridad = $get('prioridad') ?? 3;
-                                //         return match($prioridad) {
-                                //             1 => '🔴 Crítica',
-                                //             2 => '🟡 Alta',
-                                //             3 => '🟢 Media',
-                                //             default => 'Sin prioridad'
-                                //         };
-                                //     })
-                                //     ->extraAttributes(function (Forms\Get $get) {
-                                //         $prioridad = $get('prioridad') ?? 3;
-                                //         $colorClass = match($prioridad) {
-                                //             1 => 'text-red-600 bg-red-50 border border-red-200',
-                                //             2 => 'text-yellow-600 bg-yellow-50 border border-yellow-200',
-                                //             3 => 'text-green-600 bg-green-50 border border-green-200',
-                                //             default => 'text-gray-600 bg-gray-50 border border-gray-200'
-                                //         };
-                                //         return [
-                                //             'class' => 'font-semibold px-3 py-2 rounded-md ' . $colorClass
-                                //         ];
-                                //     })
-                                //     ->columnSpan([
-                                //         'default' => 1,
-                                //         'md' => 2,
-                                //         'lg' => 2,
-                                //     ]),
-
                                 // Sección de verificación con checkboxes mejorados
                                 Section::make()
                                     ->schema([
@@ -607,14 +593,14 @@ class ChecklistInspectionResource extends Resource
                                                     ->inline(true)
                                                     ->live()
                                                     ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
-                                                        // Si se marca "No Cumple", desmarcar "Cumple" y calcular estado según prioridad
+                                                        // Si se marca "No Cumple", desmarcar "Cumple" y calcular estado según condición
                                                         if ($state === true) {
                                                             $set('checkbox_1', false);
-                                                            $prioridad = $get('prioridad') ?? 3;
-                                                            if ($prioridad === 1) {
-                                                                $set('estado', 'N'); // N = NO APTO (Prioridad 1)
+                                                            $condicion = $get('condicion') ?? 'No limitante';
+                                                            if ($condicion === 'Limitante') {
+                                                                $set('estado', 'N'); // N = NO APTO (Condición Limitante)
                                                             } else {
-                                                                $set('estado', 'O'); // O = OBSERVADO (Prioridad 2-3)
+                                                                $set('estado', 'O'); // O = OBSERVADO (Condición No limitante)
                                                             }
                                                         } elseif ($state === false && !$get('checkbox_1')) {
                                                             // Si se desmarca y el otro tampoco está marcado, limpiar estado
@@ -635,8 +621,8 @@ class ChecklistInspectionResource extends Resource
                                     ->label('📊 Estado de Evaluación')
                                     ->options([
                                         'A' => 'APTO - Cumple con los requisitos',
-                                        'N' => 'NO APTO - No cumple (Prioridad 1)',
-                                        'O' => 'OBSERVADO - No cumple (Prioridad 2-3)',
+                                        'N' => 'NO APTO - No cumple (Condición Limitante)',
+                                        'O' => 'OBSERVADO - No cumple (Condición No limitante)',
                                     ])
                                     ->prefixIcon('heroicon-o-flag')
                                     ->placeholder('Seleccione el estado...')
@@ -759,8 +745,8 @@ class ChecklistInspectionResource extends Resource
                                                 ->exists();
                                         }
                                         
-                                        $prioridad = $get('prioridad') ?? 3;
-                                        return ChecklistInspection::priorityAllowsAttachments($prioridad);
+                                        $condicion = $get('condicion') ?? 'No limitante';
+                                        return ChecklistInspection::conditionAllowsAttachments($condicion);
                                     })
                                     ->columnSpan([
                                         'default' => 1,
@@ -897,22 +883,21 @@ class ChecklistInspectionResource extends Resource
                 $item = $state['item'] ?? 'Nuevo ítem';
                 $itemES = $state['item_es'] ?? null;  // Traducción en español si existe
                 $estado = $state['estado'] ?? '';
-                $prioridad = $state['prioridad'] ?? 3;
+                $condicion = $state['condicion'] ?? 'No limitante';
 
                 // Traducir el item para visualización (solo UI, no modifica datos)
                 // Si existe 'item_es' en la DB, lo usa; si no, usa el diccionario
                 $itemTranslated = static::translateItemForDisplay($item, $itemES);
-                
-                // Mostrar prioridad como emoji al lado del nombre del ítem
-                $prioridadEmoji = match($prioridad) {
-                    1 => '🔴',
-                    2 => '🟡',
-                    3 => '🟢',
+
+                // Mostrar condición como emoji al lado del nombre del ítem
+                $condicionEmoji = match($condicion) {
+                    'Limitante' => '🔴',
+                    'No limitante' => '🟢',
                     default => ''
                 };
-                
+
                 // Retornar HtmlString con contenedor en una sola línea
-                return new HtmlString('<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' . $prioridadEmoji . ' ' . $itemTranslated . '</div>');
+                return new HtmlString('<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' . $condicionEmoji . ' ' . $itemTranslated . '</div>');
             });
     }
 

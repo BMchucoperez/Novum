@@ -51,15 +51,15 @@ class EditChecklistInspection extends EditRecord
      * Lógica:
      * - Si checkbox_1 (Cumple) está marcado → 'A' (APTO)
      * - Si checkbox_2 (No Cumple) está marcado:
-     *   - Si prioridad === 1 → 'N' (NO APTO - Crítico)
-     *   - Si prioridad === 2 o 3 → 'O' (OBSERVADO - No crítico)
+     *   - Si condicion === 'Limitante' → 'N' (NO APTO - Crítico)
+     *   - Si condicion === 'No limitante' → 'O' (OBSERVADO - No crítico)
      * - Si ninguno está marcado → '' (vacío)
      */
     private function calculateItemEstado(array $item): string
     {
         $checkbox1 = $item['checkbox_1'] ?? false;
         $checkbox2 = $item['checkbox_2'] ?? false;
-        $prioridad = $item['prioridad'] ?? 3;
+        $condicion = $item['condicion'] ?? 'No limitante';
 
         // Si "Cumple" está marcado
         if ($checkbox1 === true) {
@@ -68,7 +68,7 @@ class EditChecklistInspection extends EditRecord
 
         // Si "No Cumple" está marcado
         if ($checkbox2 === true) {
-            if ($prioridad === 1) {
+            if ($condicion === 'Limitante') {
                 return 'N'; // NO APTO (Crítico)
             } else {
                 return 'O'; // OBSERVADO (No crítico)
